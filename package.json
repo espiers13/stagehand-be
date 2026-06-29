@@ -1,0 +1,37 @@
+{
+  "name": "stagehand-be",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "node listen.js",
+    "dev": "nodemon listen.js",
+    "seed": "node db/seeds/seed.js",
+    "test": "jest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/espiers13/stagehand-be.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/espiers13/stagehand-be/issues"
+  },
+  "homepage": "https://github.com/espiers13/stagehand-be#readme",
+  "description": "",
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "pg": "^8.22.0",
+    "pg-format": "^1.0.4"
+  },
+  "devDependencies": {
+    "jest": "^30.4.2",
+    "nodemon": "^3.1.14",
+    "supertest": "^7.2.2"
+  }
+}
