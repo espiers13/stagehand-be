@@ -1,5 +1,7 @@
 # Stage Hand BE
 
+> ⚠️ **Work in Progress** — this project is currently in active development. Endpoints and data models may change.
+
 A RESTful API for the Stage Hand rehearsal scheduling app, built with Node.js, Express, and PostgreSQL. Allows theatre companies to create productions, manage company members, schedule rehearsals, and track attendance.
 
 ## Getting Started
@@ -27,12 +29,14 @@ npm install
 3. Create the following environment files in the root directory:
 
 **.env**
+
 ```
 PGDATABASE=stagehand
 JWT_SECRET=your_jwt_secret
 ```
 
 **.env.test**
+
 ```
 PGDATABASE=stagehand_test
 JWT_SECRET=your_jwt_secret
@@ -63,47 +67,47 @@ Tests use a separate test database that is re-seeded before each test.
 
 ### Auth
 
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| POST | `/api/login` | Authenticate user, returns JWT token | No |
-| POST | `/api/register` | Create a new user | No |
+| Method | Endpoint        | Description                          | Auth Required |
+| ------ | --------------- | ------------------------------------ | ------------- |
+| POST   | `/api/login`    | Authenticate user, returns JWT token | No            |
+| POST   | `/api/register` | Create a new user                    | No            |
 
 ### Productions
 
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| GET | `/api/productions` | Get all productions for authenticated user | Yes |
-| POST | `/api/productions` | Create a new production | Yes |
-| GET | `/api/productions/:production_id` | Get a production by ID | Yes |
-| PATCH | `/api/productions/:production_id` | Edit production details | Yes |
-| DELETE | `/api/productions/:production_id` | Delete a production | Yes |
+| Method | Endpoint                          | Description                                | Auth Required |
+| ------ | --------------------------------- | ------------------------------------------ | ------------- |
+| GET    | `/api/productions`                | Get all productions for authenticated user | Yes           |
+| POST   | `/api/productions`                | Create a new production                    | Yes           |
+| GET    | `/api/productions/:production_id` | Get a production by ID                     | Yes           |
+| PATCH  | `/api/productions/:production_id` | Edit production details                    | Yes           |
+| DELETE | `/api/productions/:production_id` | Delete a production                        | Yes           |
 
 ### Company Members
 
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| GET | `/api/productions/:production_id/company` | Get all company members for a production | Yes |
-| POST | `/api/productions/:production_id/company` | Add a company member by email | Yes |
-| DELETE | `/api/company/:member_id` | Remove a company member | Yes |
+| Method | Endpoint                                  | Description                              | Auth Required |
+| ------ | ----------------------------------------- | ---------------------------------------- | ------------- |
+| GET    | `/api/productions/:production_id/company` | Get all company members for a production | Yes           |
+| POST   | `/api/productions/:production_id/company` | Add a company member by email            | Yes           |
+| DELETE | `/api/company/:member_id`                 | Remove a company member                  | Yes           |
 
 ### Rehearsals
 
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| GET | `/api/productions/:production_id/rehearsals` | Get all rehearsals for a production | Yes |
-| POST | `/api/productions/:production_id/rehearsals` | Add a rehearsal to a production | Yes |
-| PATCH | `/api/rehearsals/:rehearsal_id` | Edit rehearsal details | Yes |
-| DELETE | `/api/rehearsals/:rehearsal_id` | Delete a rehearsal | Yes |
-| GET | `/api/users/:user_id/rehearsals` | Get all rehearsals for a user | Yes |
+| Method | Endpoint                                     | Description                         | Auth Required |
+| ------ | -------------------------------------------- | ----------------------------------- | ------------- |
+| GET    | `/api/productions/:production_id/rehearsals` | Get all rehearsals for a production | Yes           |
+| POST   | `/api/productions/:production_id/rehearsals` | Add a rehearsal to a production     | Yes           |
+| PATCH  | `/api/rehearsals/:rehearsal_id`              | Edit rehearsal details              | Yes           |
+| DELETE | `/api/rehearsals/:rehearsal_id`              | Delete a rehearsal                  | Yes           |
+| GET    | `/api/users/:user_id/rehearsals`             | Get all rehearsals for a user       | Yes           |
 
 ### Calls
 
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| GET | `/api/rehearsals/:rehearsal_id/calls` | Get all calls for a rehearsal | Yes |
-| POST | `/api/rehearsals/:rehearsal_id/calls` | Add a user to a rehearsal call | Yes |
-| DELETE | `/api/rehearsals/:rehearsal_id/calls/:user_id` | Remove a user from a rehearsal call | Yes |
-| PATCH | `/api/rehearsals/:rehearsal_id/calls/:user_id` | Confirm or unconfirm attendance | Yes |
+| Method | Endpoint                                       | Description                         | Auth Required |
+| ------ | ---------------------------------------------- | ----------------------------------- | ------------- |
+| GET    | `/api/rehearsals/:rehearsal_id/calls`          | Get all calls for a rehearsal       | Yes           |
+| POST   | `/api/rehearsals/:rehearsal_id/calls`          | Add a user to a rehearsal call      | Yes           |
+| DELETE | `/api/rehearsals/:rehearsal_id/calls/:user_id` | Remove a user from a rehearsal call | Yes           |
+| PATCH  | `/api/rehearsals/:rehearsal_id/calls/:user_id` | Confirm or unconfirm attendance     | Yes           |
 
 ### Authentication
 
@@ -118,6 +122,7 @@ Authorization: Bearer <token>
 ### POST /api/login
 
 **Request body:**
+
 ```json
 {
   "email": "your@email.com",
@@ -126,6 +131,7 @@ Authorization: Bearer <token>
 ```
 
 **Response:**
+
 ```json
 {
   "user": {
@@ -140,6 +146,7 @@ Authorization: Bearer <token>
 ### POST /api/register
 
 **Request body:**
+
 ```json
 {
   "username": "your_username",
@@ -149,6 +156,7 @@ Authorization: Bearer <token>
 ```
 
 **Response:**
+
 ```json
 {
   "user": {
@@ -163,6 +171,7 @@ Authorization: Bearer <token>
 ### POST /api/productions
 
 **Request body:**
+
 ```json
 {
   "title": "A Midsummer Night's Dream",
@@ -173,6 +182,7 @@ Authorization: Bearer <token>
 ```
 
 **Response:**
+
 ```json
 {
   "production": {
@@ -189,6 +199,7 @@ Authorization: Bearer <token>
 ### PATCH /api/rehearsals/:rehearsal_id/calls/:user_id
 
 **Request body:**
+
 ```json
 {
   "confirmed": true
@@ -196,6 +207,7 @@ Authorization: Bearer <token>
 ```
 
 **Response:**
+
 ```json
 {
   "attendance": {
@@ -218,12 +230,12 @@ Authorization: Bearer <token>
 
 ## Scripts
 
-| Script | Command | Description |
-|--------|---------|-------------|
-| Start | `node listen.js` | Start the server |
-| Dev | `npm run dev` | Start with nodemon |
-| Seed | `npm run seed` | Seed the development database |
-| Test | `npm test` | Run the test suite |
+| Script | Command          | Description                   |
+| ------ | ---------------- | ----------------------------- |
+| Start  | `node listen.js` | Start the server              |
+| Dev    | `npm run dev`    | Start with nodemon            |
+| Seed   | `npm run seed`   | Seed the development database |
+| Test   | `npm test`       | Run the test suite            |
 
 ## Project Structure
 
