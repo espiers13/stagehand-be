@@ -7,13 +7,14 @@ const seed = ({
   productionsData,
   companyMembersData,
   rehearsalsData,
+  rehearsalAttendanceData,
 }) => {
   return db
-    .query(`DROP TABLE IF EXISTS rehearsals;`)
+    .query(`DROP TABLE IF EXISTS rehearsal_attendance;`)
+    .then(() => db.query(`DROP TABLE IF EXISTS rehearsals;`))
     .then(() => db.query(`DROP TABLE IF EXISTS company_members;`))
     .then(() => db.query(`DROP TABLE IF EXISTS productions;`))
     .then(() => db.query(`DROP TABLE IF EXISTS users;`))
-    .then(() => db.query(`DROP TABLE IF EXISTS rehearsal_attendance;`))
     .then(() => {
       return db.query(`
         CREATE TABLE users(
@@ -122,20 +123,19 @@ const seed = ({
             `{${called.join(",")}}`,
           ],
         ),
-      ).then(() => {
-        const insertRehearsalAttendanceString = format(
-          "INSERT INTO rehearsal_attendance (rehearsal_id, user_id, confirmed) VALUES %L RETURNING *;",
-          rehearsalAttendanceData.map(
-            ({ rehearsal_id, user_id, confirmed }) => [
-              rehearsal_id,
-              user_id,
-              confirmed,
-            ],
-          ),
-        );
-        return db.query(insertRehearsalAttendanceString);
-      });
+      );
       return db.query(insertRehearsalsString);
+    })
+    .then(() => {
+      const insertRehearsalAttendanceString = format(
+        "INSERT INTO rehearsal_attendance (rehearsal_id, user_id, confirmed) VALUES %L RETURNING *;",
+        rehearsalAttendanceData.map(({ rehearsal_id, user_id, confirmed }) => [
+          rehearsal_id,
+          user_id,
+          confirmed,
+        ]),
+      );
+      return db.query(insertRehearsalAttendanceString);
     });
 };
 

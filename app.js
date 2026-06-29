@@ -2,14 +2,25 @@ const express = require("express");
 const cors = require("cors");
 const app = express();
 
+const {
+  loginUser,
+  registerUser,
+} = require("./db/controllers/user-controllers.js");
+
+// MIDDLEWARE
+
 app.use(cors());
 app.use(express.json());
 
 // AUTH ROUTES
 
+// POST LOGIN USER
+
+app.post("/api/login", loginUser);
+
 // POST NEW USER
 
-// POST LOGIN USER
+app.post("/api/register", registerUser);
 
 // GET AUTHENTICATED USER
 

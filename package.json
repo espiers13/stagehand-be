@@ -8,6 +8,9 @@
     "seed": "node db/seeds/seed.js",
     "test": "jest"
   },
+  "jest": {
+    "testEnvironment": "node"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/espiers13/stagehand-be.git"
@@ -31,6 +34,7 @@
   },
   "devDependencies": {
     "jest": "^30.4.2",
+    "jest-sorted": "^1.0.15",
     "nodemon": "^3.1.14",
     "supertest": "^7.2.2"
   }
