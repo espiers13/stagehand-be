@@ -2,9 +2,21 @@ const express = require("express");
 const cors = require("cors");
 const app = express();
 
+const verifyToken = require("./db/middleware/auth.js");
+
 const {
   loginUser,
   registerUser,
+  getLoggedInUser,
+  getUserProductions,
+  postNewProduction,
+  changePassword,
+  deleteUser,
+  forgotPassword,
+  resetPassword,
+  getProductionById,
+  updateProductionData,
+  deleteProduction,
 } = require("./db/controllers/user-controllers.js");
 
 // MIDDLEWARE
@@ -22,19 +34,47 @@ app.post("/api/login", loginUser);
 
 app.post("/api/register", registerUser);
 
-// GET AUTHENTICATED USER
+// GET LOGGED IN USER BY ID
+
+app.get("/api/user", verifyToken, getLoggedInUser);
+
+// GET PRODUCTIONS BY USER_ID
+
+app.get("/api/user/productions", verifyToken, getUserProductions);
+
+// // CHANGE PASSWORD WHEN LOGGED IN
+
+app.patch("/api/user/password", verifyToken, changePassword);
+
+// FORGOT PASSWORD
+
+app.post("/api/forgot-password", forgotPassword);
+
+// RESET PASSWORD
+
+app.post("/api/reset-password", resetPassword);
+
+// // DELETE USER
+
+app.delete("/api/user", verifyToken, deleteUser);
 
 // PRODUCTION ROUTES
 
-// GET ALL PRODUCTIONS
-
 // POST NEW PRODUCTION
+
+app.post("/api/productions", verifyToken, postNewProduction);
 
 // GET PRODUCTION BY ID
 
+app.get("/api/productions/:production_id", verifyToken, getProductionById);
+
 // PATCH PRODUCTION BY ID - EDIT TITLE, DATES, COMPANY MEMBERS, VENUE
 
+app.patch("/api/productions/:production_id", verifyToken, updateProductionData);
+
 // DELETE PRODUCTION BY ID
+
+app.delete("/api/productions/:production_id", verifyToken, deleteProduction);
 
 // COMPANY MEMBER ROUTES
 

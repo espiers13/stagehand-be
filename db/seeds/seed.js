@@ -17,11 +17,13 @@ const seed = ({
     .then(() => db.query(`DROP TABLE IF EXISTS users;`))
     .then(() => {
       return db.query(`
-        CREATE TABLE users(
-        id SERIAL PRIMARY KEY,
-        username VARCHAR(100) UNIQUE NOT NULL,
-        email VARCHAR(255) UNIQUE NOT NULL,
-        password_hash TEXT NOT NULL);`);
+    CREATE TABLE users(
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(100) UNIQUE NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    reset_token VARCHAR,
+    reset_token_expires TIMESTAMP);`);
     })
     .then(() => {
       return db.query(`
@@ -66,12 +68,22 @@ const seed = ({
     })
     .then((hashedUsersData) => {
       const insertUsersString = format(
-        "INSERT INTO users (username, email, password_hash) VALUES %L RETURNING *;",
-        hashedUsersData.map(({ username, email, password_hash }) => [
-          username,
-          email,
-          password_hash,
-        ]),
+        "INSERT INTO users (username, email, password_hash, reset_token, reset_token_expires) VALUES %L RETURNING *;",
+        hashedUsersData.map(
+          ({
+            username,
+            email,
+            password_hash,
+            reset_token,
+            reset_token_expires,
+          }) => [
+            username,
+            email,
+            password_hash,
+            reset_token || null,
+            reset_token_expires || null,
+          ],
+        ),
       );
       return db.query(insertUsersString);
     })
