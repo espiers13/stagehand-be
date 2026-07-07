@@ -47,3 +47,29 @@ exports.sendNewMemberInviteEmail = (email, userId, productionTitle) => {
     `,
   });
 };
+
+exports.sendRehearsalNotificationEmail = (
+  emails,
+  rehearsal,
+  productionTitle,
+  changeType,
+) => {
+  if (emails.length === 0) return Promise.resolve();
+
+  return resend.emails.send({
+    from: `Stage Hand <noreply@stagehand.com>`,
+    to: emails,
+    subject: `Rehearsal ${changeType} — ${productionTitle}`,
+    html: `
+      <p>Hi,</p>
+      <p>A rehearsal has been ${changeType} for <strong>${productionTitle}</strong>:</p>
+      <ul>
+        <li>Date: ${rehearsal.date}</li>
+        <li>Time: ${rehearsal.start_time} - ${rehearsal.end_time}</li>
+        <li>Location: ${rehearsal.location}</li>
+        ${rehearsal.notes ? `<li>Notes: ${rehearsal.notes}</li>` : ""}
+        ${rehearsal.scenes && rehearsal.scenes.length > 0 ? `<li>Scenes: ${rehearsal.scenes.join(", ")}</li>` : ""}
+      </ul>
+    `,
+  });
+};

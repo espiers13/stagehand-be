@@ -10,7 +10,15 @@ jest.mock("../db/utils/mailer.js", () => ({
   sendPasswordResetEmail: jest.fn().mockResolvedValue(),
   sendExistingMemberAddedEmail: jest.fn().mockResolvedValue(),
   sendNewMemberInviteEmail: jest.fn().mockResolvedValue(),
+  sendRehearsalNotificationEmail: jest.fn().mockResolvedValue(),
 }));
+
+const {
+  sendPasswordResetEmail,
+  sendExistingMemberAddedEmail,
+  sendNewMemberInviteEmail,
+  sendRehearsalNotificationEmail,
+} = require("../db/utils/mailer.js");
 
 beforeEach(() => {
   sendPasswordResetEmail.mockClear();
@@ -19,12 +27,6 @@ beforeEach(() => {
 beforeEach(() => {
   jest.clearAllMocks();
 });
-
-const {
-  sendPasswordResetEmail,
-  sendExistingMemberAddedEmail,
-  sendNewMemberInviteEmail,
-} = require("../db/utils/mailer.js");
 
 beforeEach(() => {
   return seed(testData);
@@ -1107,7 +1109,7 @@ describe("REHEARSAL ROUTES", () => {
 
   // POST NEW REHEARSAL TO PRODUCTION BY ID
 
-  describe.only("POST /api/productions/:production_id/rehearsals", () => {
+  describe("POST /api/productions/:production_id/rehearsals", () => {
     test("Status 201: Returns new rehearsal data", () => {
       const token = jwt.sign(
         { user_id: 1, username: "sarah_director" },
@@ -1253,8 +1255,222 @@ describe("REHEARSAL ROUTES", () => {
   });
 
   // PATCH REHEARSAL BY ID - EDIT DATE, TIME, LOCATION, NOTES
-  // GET ALL REHEARSALS BY USER_ID
+
+  describe("PATCH /api/productions/:production_id/rehearsals/:rehearsal_id", () => {
+    test("Status 200: Returns updated rehearsal data", () => {
+      const token = jwt.sign(
+        { user_id: 1, username: "sarah_director" },
+        process.env.JWT_SECRET,
+      );
+      return request(app)
+        .patch("/api/productions/1/rehearsals/1")
+        .send({ location: "Directors home" })
+        .set("Authorization", `Bearer ${token}`)
+        .expect(200)
+        .then(({ body }) => {
+          expect(body).toMatchObject({
+            id: 1,
+            production_id: 1,
+            date: "2026-07-13T23:00:00.000Z",
+            start_time: "10:00:00",
+            end_time: "13:00:00",
+            location: "Directors home",
+            notes: "First read-through, full company called",
+            called: [1, 2, 3, 4],
+          });
+        });
+    });
+
+    test("Status 200: Adding to the notes updates only the notes field", () => {
+      const token = jwt.sign(
+        { user_id: 1, username: "sarah_director" },
+        process.env.JWT_SECRET,
+      );
+      return request(app)
+        .patch("/api/productions/1/rehearsals/1")
+        .send({
+          notes: "First read-through, full company called. Bring scripts.",
+        })
+        .set("Authorization", `Bearer ${token}`)
+        .expect(200)
+        .then(({ body }) => {
+          expect(body).toMatchObject({
+            id: 1,
+            notes: "First read-through, full company called. Bring scripts.",
+            location: "Studio 3, Manchester",
+          });
+        });
+    });
+
+    test("Status 200: Removing a few scenes updates the scenes array", () => {
+      const token = jwt.sign(
+        { user_id: 1, username: "sarah_director" },
+        process.env.JWT_SECRET,
+      );
+      return request(app)
+        .patch("/api/productions/1/rehearsals/2")
+        .send({ scenes: [2] })
+        .set("Authorization", `Bearer ${token}`)
+        .expect(200)
+        .then(({ body }) => {
+          expect(body).toMatchObject({
+            id: 2,
+            scenes: [2],
+          });
+        });
+    });
+
+    test("Status 401: No token provided", () => {
+      return request(app)
+        .patch("/api/productions/1/rehearsals/1")
+        .send({ location: "Directors home" })
+        .expect(401)
+        .then(({ body }) => {
+          expect(body.msg).toEqual("No token provided");
+        });
+    });
+
+    test("Status 403: User is not the production creator", () => {
+      const token = jwt.sign(
+        { user_id: 2, username: "cast_member_two" },
+        process.env.JWT_SECRET,
+      );
+      return request(app)
+        .patch("/api/productions/1/rehearsals/1")
+        .send({ location: "Directors home" })
+        .set("Authorization", `Bearer ${token}`)
+        .expect(403)
+        .then(({ body }) => {
+          expect(body.msg).toEqual("Forbidden");
+        });
+    });
+
+    test("Status 403: production_id is not valid", () => {
+      const token = jwt.sign(
+        { user_id: 1, username: "sarah_director" },
+        process.env.JWT_SECRET,
+      );
+      return request(app)
+        .patch("/api/productions/5/rehearsals/1")
+        .send({ location: "Directors home" })
+        .set("Authorization", `Bearer ${token}`)
+        .expect(403)
+        .then(({ body }) => {
+          expect(body.msg).toEqual("Forbidden");
+        });
+    });
+
+    test("Status 404: rehearsal_id does not exist on this production", () => {
+      const token = jwt.sign(
+        { user_id: 1, username: "sarah_director" },
+        process.env.JWT_SECRET,
+      );
+      return request(app)
+        .patch("/api/productions/1/rehearsals/999")
+        .send({ location: "Directors home" })
+        .set("Authorization", `Bearer ${token}`)
+        .expect(403)
+        .then(({ body }) => {
+          expect(body.msg).toEqual("Forbidden");
+        });
+    });
+  });
+
   // DELETE A REHEARSAL BY ID
+
+  describe("DELETE /api/productions/:production_id/rehearsals/:rehearsal_id", () => {
+    test("Status 204: Successfully deletes rehearsal by id", () => {
+      const token = jwt.sign(
+        { user_id: 1, username: "sarah_director" },
+        process.env.JWT_SECRET,
+      );
+
+      return request(app)
+        .delete("/api/productions/1/rehearsals/2")
+        .set("Authorization", `Bearer ${token}`)
+        .expect(204);
+    });
+
+    test("status 401: no token provided", () => {
+      return request(app)
+        .delete("/api/productions/1/rehearsals/2")
+        .expect(401)
+        .then(({ body }) => {
+          expect(body.msg).toEqual("No token provided");
+        });
+    });
+
+    test("status 403: only the production creator can delete a company member", () => {
+      const token = jwt.sign(
+        { user_id: 3, username: "cast_member_three" },
+        process.env.JWT_SECRET,
+      );
+
+      return request(app)
+        .delete("/api/productions/1/rehearsals/2")
+        .set("Authorization", `Bearer ${token}`)
+        .expect(403)
+        .then(({ body }) => {
+          expect(body.msg).toEqual("Forbidden");
+        });
+    });
+  });
+
+  // GET ALL REHEARSALS FOR LOGGED IN USER
+
+  describe("GET /api/users/me/schedule", () => {
+    test("Status 200: Returns an array of rehearsals for logged in user", () => {
+      const token = jwt.sign(
+        { user_id: 2, username: "tom_actor" },
+        process.env.JWT_SECRET,
+      );
+
+      return request(app)
+        .get("/api/users/me/schedule")
+        .set("Authorization", `Bearer ${token}`)
+        .expect(200)
+        .then(({ body }) => {
+          expect(Array.isArray(body)).toBe(true);
+          expect(body.length).toBeGreaterThan(0);
+          body.forEach((rehearsal) => {
+            expect(rehearsal).toMatchObject({
+              title: expect.any(String),
+              date: expect.any(String),
+              start_time: expect.any(String),
+              end_time: expect.any(String),
+              location: expect.any(String),
+              notes: expect.any(String),
+              scenes: expect.any(Array),
+              called: expect.any(Array),
+            });
+          });
+        });
+    });
+
+    test("Status 200: Returns an empty array for a user not called to any rehearsals", () => {
+      const token = jwt.sign(
+        { user_id: 99, username: "no_rehearsals_user" },
+        process.env.JWT_SECRET,
+      );
+
+      return request(app)
+        .get("/api/users/me/schedule")
+        .set("Authorization", `Bearer ${token}`)
+        .expect(200)
+        .then(({ body }) => {
+          expect(body).toEqual([]);
+        });
+    });
+
+    test("Status 401: No token provided", () => {
+      return request(app)
+        .get("/api/users/me/schedule")
+        .expect(401)
+        .then(({ body }) => {
+          expect(body.msg).toEqual("No token provided");
+        });
+    });
+  });
 });
 
 // CALL ROUTES

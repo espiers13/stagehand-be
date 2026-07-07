@@ -31,6 +31,9 @@ const {
 const {
   getRehearsalsByProduction,
   postNewRehearsal,
+  patchRehearsal,
+  deleteRehearsal,
+  getUserSchedule,
 } = require("./db/controllers/rehearsal-controllers.js");
 
 // MIDDLEWARE
@@ -136,9 +139,23 @@ app.post(
 
 // PATCH REHEARSAL BY ID - EDIT DATE, TIME, LOCATION, NOTES
 
-// GET ALL REHEARSALS BY USER_ID
+app.patch(
+  "/api/productions/:production_id/rehearsals/:rehearsal_id",
+  verifyToken,
+  patchRehearsal,
+);
 
 // DELETE A REHEARSAL BY ID
+
+app.delete(
+  "/api/productions/:production_id/rehearsals/:rehearsal_id",
+  verifyToken,
+  deleteRehearsal,
+);
+
+// GET REHEARSALS FOR LOGGED IN USER
+
+app.get("/api/users/me/schedule", verifyToken, getUserSchedule);
 
 // CALL ROUTES
 

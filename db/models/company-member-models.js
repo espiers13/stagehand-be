@@ -8,6 +8,8 @@ const {
   sendNewMemberInviteEmail,
 } = require("../utils/mailer.js");
 
+const { generateTempPassword } = require("../utils/temp-password.js");
+
 const saltRounds = 10;
 
 exports.fetchMembersByProduction = (production_id, userId) => {
@@ -149,7 +151,9 @@ exports.createNewCompanyMember = (production_id, userId, newMember) => {
 
       const username = email.split("@")[0];
 
-      return bcrypt.hash("temporary", 10).then((hashedPassword) => {
+      const tempPassword = generateTempPassword();
+
+      return bcrypt.hash(tempPassword, 10).then((hashedPassword) => {
         return db
           .query(
             `INSERT INTO users (username, email, password_hash) VALUES ($1, $2, $3) RETURNING id, username`,
