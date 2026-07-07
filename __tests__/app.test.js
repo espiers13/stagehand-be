@@ -8,13 +8,23 @@ const jwt = require("jsonwebtoken");
 
 jest.mock("../db/utils/mailer.js", () => ({
   sendPasswordResetEmail: jest.fn().mockResolvedValue(),
+  sendExistingMemberAddedEmail: jest.fn().mockResolvedValue(),
+  sendNewMemberInviteEmail: jest.fn().mockResolvedValue(),
 }));
 
 beforeEach(() => {
   sendPasswordResetEmail.mockClear();
 });
 
-const { sendPasswordResetEmail } = require("../db/utils/mailer.js");
+beforeEach(() => {
+  jest.clearAllMocks();
+});
+
+const {
+  sendPasswordResetEmail,
+  sendExistingMemberAddedEmail,
+  sendNewMemberInviteEmail,
+} = require("../db/utils/mailer.js");
 
 beforeEach(() => {
   return seed(testData);
@@ -25,803 +35,1227 @@ afterAll(() => {
 
 // AUTH ROUTES
 
-// LOGIN USER
+describe("AUTH USER ROUTES", () => {
+  // LOGIN USER
 
-describe("POST /api/login", () => {
-  test("Status 200: returns user data when correct username and password are given", () => {
-    return request(app)
-      .post("/api/login")
-      .send({ email: "sarah@stagehand.com", password: "Password123!" })
-      .expect(200)
-      .then(({ body }) => {
-        expect(body.user).toMatchObject({
-          id: 1,
-          username: "sarah_director",
-          email: "sarah@stagehand.com",
+  describe("POST /api/login", () => {
+    test("Status 200: returns user data when correct username and password are given", () => {
+      return request(app)
+        .post("/api/login")
+        .send({ email: "sarah@stagehand.com", password: "Password123!" })
+        .expect(200)
+        .then(({ body }) => {
+          expect(body.user).toMatchObject({
+            id: 1,
+            username: "sarah_director",
+            email: "sarah@stagehand.com",
+          });
+          expect(body).toHaveProperty("token");
         });
-        expect(body).toHaveProperty("token");
-      });
-  });
+    });
 
-  test("Status 401: Invalid password", () => {
-    const credentials = {
-      email: "sarah@stagehand.com",
-      password: "notthepassword",
-    };
-    return request(app)
-      .post("/api/login")
-      .send(credentials)
-      .expect(401)
-      .then(({ body }) => {
-        expect(body.msg).toEqual("Invalid password");
-      });
-  });
-
-  test("Status 401: User doesn't exist", () => {
-    const credentials = {
-      username: "notauser",
-      password: "notthepassword",
-    };
-    return request(app)
-      .post("/api/login")
-      .send(credentials)
-      .expect(401)
-      .then(({ body }) => {
-        expect(body.msg).toEqual("User not found");
-      });
-  });
-});
-
-// CREATE NEW USER
-
-describe("POST /api/register", () => {
-  test("Status 201: returns new user data when valid details are given", () => {
-    return request(app)
-      .post("/api/register")
-      .send({
-        email: "newuser@stagehand.com",
-        username: "new_user",
-        password: "Password123!",
-      })
-      .expect(201)
-      .then(({ body }) => {
-        expect(body.user).toMatchObject({
-          id: expect.any(Number),
-          username: "new_user",
-          email: "newuser@stagehand.com",
-        });
-        expect(body.user).not.toHaveProperty("password_hash");
-        expect(body).toHaveProperty("token");
-      });
-  });
-
-  test("Status 409: email already in use", () => {
-    return request(app)
-      .post("/api/register")
-      .send({
+    test("Status 401: Invalid password", () => {
+      const credentials = {
         email: "sarah@stagehand.com",
-        username: "sarah_duplicate",
-        password: "Password123!",
-      })
-      .expect(409)
-      .then(({ body }) => {
-        expect(body.msg).toEqual("Email already exists");
-      });
-  });
-
-  test("Status 409: username already in use", () => {
-    return request(app)
-      .post("/api/register")
-      .send({
-        email: "different@stagehand.com",
-        username: "sarah_director",
-        password: "Password123!",
-      })
-      .expect(409)
-      .then(({ body }) => {
-        expect(body.msg).toEqual("Username already exists");
-      });
-  });
-});
-
-// GET LOGGED IN USER INFO
-
-describe("GET /api/user", () => {
-  test("200: responds with the logged-in user's data", () => {
-    const token = jwt.sign(
-      { user_id: 1, username: "sarah_director" },
-      process.env.JWT_SECRET,
-    );
-
-    return request(app)
-      .get("/api/user")
-      .set("Authorization", `Bearer ${token}`)
-      .expect(200)
-      .then(({ body }) => {
-        expect(body.user).toMatchObject({
-          email: "sarah@stagehand.com",
-          id: 1,
-          username: "sarah_director",
+        password: "notthepassword",
+      };
+      return request(app)
+        .post("/api/login")
+        .send(credentials)
+        .expect(401)
+        .then(({ body }) => {
+          expect(body.msg).toEqual("Invalid password");
         });
-        expect(body.user).not.toHaveProperty("password");
-      });
+    });
+
+    test("Status 401: User doesn't exist", () => {
+      const credentials = {
+        username: "notauser",
+        password: "notthepassword",
+      };
+      return request(app)
+        .post("/api/login")
+        .send(credentials)
+        .expect(401)
+        .then(({ body }) => {
+          expect(body.msg).toEqual("User not found");
+        });
+    });
   });
 
-  test("401: no token provided", () => {
-    return request(app)
-      .get("/api/user")
-      .expect(401)
-      .then(({ body }) => {
-        expect(body.msg).toBe("No token provided");
-      });
+  // CREATE NEW USER
+
+  describe("POST /api/register", () => {
+    test("Status 201: returns new user data when valid details are given", () => {
+      return request(app)
+        .post("/api/register")
+        .send({
+          email: "newuser@stagehand.com",
+          username: "new_user",
+          password: "Password123!",
+        })
+        .expect(201)
+        .then(({ body }) => {
+          expect(body.user).toMatchObject({
+            id: expect.any(Number),
+            username: "new_user",
+            email: "newuser@stagehand.com",
+          });
+          expect(body.user).not.toHaveProperty("password_hash");
+          expect(body).toHaveProperty("token");
+        });
+    });
+
+    test("Status 409: email already in use", () => {
+      return request(app)
+        .post("/api/register")
+        .send({
+          email: "sarah@stagehand.com",
+          username: "sarah_duplicate",
+          password: "Password123!",
+        })
+        .expect(409)
+        .then(({ body }) => {
+          expect(body.msg).toEqual("Email already exists");
+        });
+    });
+
+    test("Status 409: username already in use", () => {
+      return request(app)
+        .post("/api/register")
+        .send({
+          email: "different@stagehand.com",
+          username: "sarah_director",
+          password: "Password123!",
+        })
+        .expect(409)
+        .then(({ body }) => {
+          expect(body.msg).toEqual("Username already exists");
+        });
+    });
   });
 
-  test("401: invalid token", () => {
-    return request(app)
-      .get("/api/user")
-      .set("Authorization", "Bearer not.a.valid.token")
-      .expect(401)
-      .then(({ body }) => {
-        expect(body.msg).toBe("Invalid or expired token");
-      });
+  // GET LOGGED IN USER INFO
+
+  describe("GET /api/user", () => {
+    test("200: responds with the logged-in user's data", () => {
+      const token = jwt.sign(
+        { user_id: 1, username: "sarah_director" },
+        process.env.JWT_SECRET,
+      );
+
+      return request(app)
+        .get("/api/user")
+        .set("Authorization", `Bearer ${token}`)
+        .expect(200)
+        .then(({ body }) => {
+          expect(body.user).toMatchObject({
+            email: "sarah@stagehand.com",
+            id: 1,
+            username: "sarah_director",
+          });
+          expect(body.user).not.toHaveProperty("password");
+        });
+    });
+
+    test("401: no token provided", () => {
+      return request(app)
+        .get("/api/user")
+        .expect(401)
+        .then(({ body }) => {
+          expect(body.msg).toBe("No token provided");
+        });
+    });
+
+    test("401: invalid token", () => {
+      return request(app)
+        .get("/api/user")
+        .set("Authorization", "Bearer not.a.valid.token")
+        .expect(401)
+        .then(({ body }) => {
+          expect(body.msg).toBe("Invalid or expired token");
+        });
+    });
+
+    test("401: expired token", () => {
+      const expiredToken = jwt.sign(
+        { user_id: 1, username: "sarah_director" },
+        process.env.JWT_SECRET,
+        { expiresIn: -10 },
+      );
+
+      return request(app)
+        .get("/api/user")
+        .set("Authorization", `Bearer ${expiredToken}`)
+        .expect(401);
+    });
   });
 
-  test("401: expired token", () => {
-    const expiredToken = jwt.sign(
-      { user_id: 1, username: "sarah_director" },
-      process.env.JWT_SECRET,
-      { expiresIn: -10 },
-    );
+  // CHANGE PASSWORD WHEN LOGGED IN
 
-    return request(app)
-      .get("/api/user")
-      .set("Authorization", `Bearer ${expiredToken}`)
-      .expect(401);
-  });
-});
+  describe("PATCH /api/user/password", () => {
+    test("status 200: successfully updates password when current password is correct", () => {
+      const token = jwt.sign(
+        { user_id: 1, username: "sarah_director" },
+        process.env.JWT_SECRET,
+      );
 
-// GET PRODUCTIONS BY USER_ID
+      return request(app)
+        .patch("/api/user/password")
+        .send({
+          currentPassword: "Password123!",
+          newPassword: "newSecurePassword456",
+        })
+        .set("Authorization", `Bearer ${token}`)
+        .expect(200)
+        .then(({ body }) => {
+          expect(body.msg).toBe("Password updated successfully");
+        });
+    });
 
-describe("GET /api/user/productions", () => {
-  test("Status 200: responds with array of objects of productions user has created", () => {
-    const token = jwt.sign(
-      { user_id: 1, username: "sarah_director" },
-      process.env.JWT_SECRET,
-    );
+    test("status 401: rejects when current password is incorrect", () => {
+      const token = jwt.sign(
+        { user_id: 1, username: "sarah_director" },
+        process.env.JWT_SECRET,
+      );
 
-    return request(app)
-      .get("/api/user/productions")
-      .set("Authorization", `Bearer ${token}`)
-      .expect(200)
-      .then(({ body }) => {
-        expect(body).toMatchObject([
-          {
-            title: "A Midsummer Night's Dream",
-            venue: "The Lowry Studio, Salford",
-            start_date: "2026-08-31T23:00:00.000Z",
-            end_date: "2026-09-13T23:00:00.000Z",
-          },
-        ]);
-      });
-  });
+      return request(app)
+        .patch("/api/user/password")
+        .send({
+          currentPassword: "wrongPassword",
+          newPassword: "newSecurePassword456",
+        })
+        .set("Authorization", `Bearer ${token}`)
+        .expect(401)
+        .then(({ body }) => {
+          expect(body.msg).toBe("Invalid password");
+        });
+    });
 
-  test("Status 200: responds with an array of productions user is linked to", () => {
-    const token = jwt.sign(
-      { user_id: 3, username: "priya_actor" },
-      process.env.JWT_SECRET,
-    );
-    return request(app)
-      .get("/api/user/productions")
-      .set("Authorization", `Bearer ${token}`)
-      .expect(200)
-      .then(({ body }) => {
-        expect(body).toMatchObject([
-          {
-            title: "A Midsummer Night's Dream",
-            venue: "The Lowry Studio, Salford",
-            start_date: "2026-08-31T23:00:00.000Z",
-            end_date: "2026-09-13T23:00:00.000Z",
-          },
-        ]);
-      });
-  });
-});
+    test("status 401: no token provided", () => {
+      return request(app)
+        .patch("/api/user/password")
+        .send({
+          currentPassword: "Password123!",
+          newPassword: "newSecurePassword456",
+        })
+        .expect(401);
+    });
 
-// CHANGE PASSWORD WHEN LOGGED IN
+    test("status 400: missing newPassword in request body", () => {
+      const token = jwt.sign(
+        { user_id: 1, username: "sarah_director" },
+        process.env.JWT_SECRET,
+      );
 
-describe("PATCH /api/user/password", () => {
-  test("status 200: successfully updates password when current password is correct", () => {
-    const token = jwt.sign(
-      { user_id: 1, username: "sarah_director" },
-      process.env.JWT_SECRET,
-    );
+      return request(app)
+        .patch("/api/user/password")
+        .send({
+          currentPassword: "Password123!",
+        })
+        .set("Authorization", `Bearer ${token}`)
+        .expect(400)
+        .then(({ body }) => {
+          expect(body.msg).toBe("Missing required fields");
+        });
+    });
 
-    return request(app)
-      .patch("/api/user/password")
-      .send({
-        currentPassword: "Password123!",
-        newPassword: "newSecurePassword456",
-      })
-      .set("Authorization", `Bearer ${token}`)
-      .expect(200)
-      .then(({ body }) => {
-        expect(body.msg).toBe("Password updated successfully");
-      });
-  });
+    test("only updates the requesting user's own password, scoped via token not body", () => {
+      const token = jwt.sign(
+        { user_id: 1, username: "sarah_director" },
+        process.env.JWT_SECRET,
+      );
 
-  test("status 401: rejects when current password is incorrect", () => {
-    const token = jwt.sign(
-      { user_id: 1, username: "sarah_director" },
-      process.env.JWT_SECRET,
-    );
-
-    return request(app)
-      .patch("/api/user/password")
-      .send({
-        currentPassword: "wrongPassword",
-        newPassword: "newSecurePassword456",
-      })
-      .set("Authorization", `Bearer ${token}`)
-      .expect(401)
-      .then(({ body }) => {
-        expect(body.msg).toBe("Invalid password");
-      });
+      return request(app)
+        .patch("/api/user/password")
+        .send({
+          currentPassword: "Password123!",
+          newPassword: "newSecurePassword456",
+          user_id: 2,
+        })
+        .set("Authorization", `Bearer ${token}`)
+        .expect(200)
+        .then(({ body }) => {
+          expect(body.msg).toBe("Password updated successfully");
+        });
+    });
   });
 
-  test("status 401: no token provided", () => {
-    return request(app)
-      .patch("/api/user/password")
-      .send({
-        currentPassword: "Password123!",
-        newPassword: "newSecurePassword456",
-      })
-      .expect(401);
+  // DELETE USER
+  describe("DELETE /api/user", () => {
+    test("status 204: successfully deletes the logged-in user's account", () => {
+      const token = jwt.sign(
+        { user_id: 1, username: "sarah_director" },
+        process.env.JWT_SECRET,
+      );
+
+      return request(app)
+        .delete("/api/user")
+        .send({ currentPassword: "Password123!" })
+        .set("Authorization", `Bearer ${token}`)
+        .expect(204);
+    });
+
+    test("status 401: rejects when current password is incorrect", () => {
+      const token = jwt.sign(
+        { user_id: 1, username: "sarah_director" },
+        process.env.JWT_SECRET,
+      );
+
+      return request(app)
+        .delete("/api/user")
+        .send({ currentPassword: "wrongPassword" })
+        .set("Authorization", `Bearer ${token}`)
+        .expect(401)
+        .then(({ body }) => {
+          expect(body.msg).toBe("Invalid password");
+        });
+    });
+
+    test("status 401: no token provided", () => {
+      return request(app)
+        .delete("/api/user")
+        .send({ currentPassword: "Password123!" })
+        .expect(401);
+    });
+
+    test("status 400: missing currentPassword in request body", () => {
+      const token = jwt.sign(
+        { user_id: 1, username: "sarah_director" },
+        process.env.JWT_SECRET,
+      );
+
+      return request(app)
+        .delete("/api/user")
+        .send({})
+        .set("Authorization", `Bearer ${token}`)
+        .expect(400)
+        .then(({ body }) => {
+          expect(body.msg).toBe("Missing required fields");
+        });
+    });
+
+    test("only deletes the requesting user's own account, scoped via token not body", () => {
+      const token = jwt.sign(
+        { user_id: 1, username: "sarah_director" },
+        process.env.JWT_SECRET,
+      );
+
+      return request(app)
+        .delete("/api/user")
+        .send({ currentPassword: "Password123!", user_id: 2 })
+        .set("Authorization", `Bearer ${token}`)
+        .expect(204);
+    });
   });
 
-  test("status 400: missing newPassword in request body", () => {
-    const token = jwt.sign(
-      { user_id: 1, username: "sarah_director" },
-      process.env.JWT_SECRET,
-    );
+  // FORGOT PASSWORD
+  describe("POST /api/forgot-password", () => {
+    test("status 200: sends a reset email when the email exists", () => {
+      return request(app)
+        .post("/api/forgot-password")
+        .send({ email: "sarah@stagehand.com" })
+        .expect(200)
+        .then(({ body }) => {
+          expect(body.msg).toBe("Password reset email sent");
+          expect(sendPasswordResetEmail).toHaveBeenCalledTimes(1);
+        });
+    });
 
-    return request(app)
-      .patch("/api/user/password")
-      .send({
-        currentPassword: "Password123!",
-      })
-      .set("Authorization", `Bearer ${token}`)
-      .expect(400)
-      .then(({ body }) => {
-        expect(body.msg).toBe("Missing required fields");
-      });
+    test("status 200: responds the same way even when the email doesn't exist (no user enumeration)", () => {
+      return request(app)
+        .post("/api/forgot-password")
+        .send({ email: "doesnotexist@stagehand.com" })
+        .expect(200)
+        .then(({ body }) => {
+          expect(body.msg).toBe("Password reset email sent");
+          expect(sendPasswordResetEmail).not.toHaveBeenCalled();
+        });
+    });
+
+    test("status 400: missing email in request body", () => {
+      return request(app)
+        .post("/api/forgot-password")
+        .send({})
+        .expect(400)
+        .then(({ body }) => {
+          expect(body.msg).toBe("Missing required fields");
+        });
+    });
   });
 
-  test("only updates the requesting user's own password, scoped via token not body", () => {
-    const token = jwt.sign(
-      { user_id: 1, username: "sarah_director" },
-      process.env.JWT_SECRET,
-    );
+  // RESET PASSWORD
+  describe("POST /api/reset-password", () => {
+    test("200: resets the password when token is valid and unexpired", () => {
+      return request(app)
+        .post("/api/reset-password")
+        .send({
+          token: "valid-test-token",
+          newPassword: "newSecurePassword456",
+        })
+        .expect(200)
+        .then(({ body }) => {
+          expect(body.msg).toBe("Password reset successfully");
+        });
+    });
 
-    return request(app)
-      .patch("/api/user/password")
-      .send({
-        currentPassword: "Password123!",
-        newPassword: "newSecurePassword456",
-        user_id: 2,
-      })
-      .set("Authorization", `Bearer ${token}`)
-      .expect(200)
-      .then(({ body }) => {
-        expect(body.msg).toBe("Password updated successfully");
-      });
-  });
-});
+    test("status 401: rejects an invalid token", () => {
+      return request(app)
+        .post("/api/reset-password")
+        .send({
+          token: "not-a-real-token",
+          newPassword: "newSecurePassword456",
+        })
+        .expect(401)
+        .then(({ body }) => {
+          expect(body.msg).toBe("Invalid or expired token");
+        });
+    });
 
-// DELETE USER
-describe("DELETE /api/user", () => {
-  test("status 204: successfully deletes the logged-in user's account", () => {
-    const token = jwt.sign(
-      { user_id: 1, username: "sarah_director" },
-      process.env.JWT_SECRET,
-    );
+    test("status 401: rejects an expired token", () => {
+      return request(app)
+        .post("/api/reset-password")
+        .send({
+          token: "expired-test-token",
+          newPassword: "newSecurePassword456",
+        })
+        .expect(401)
+        .then(({ body }) => {
+          expect(body.msg).toBe("Invalid or expired token");
+        });
+    });
 
-    return request(app)
-      .delete("/api/user")
-      .send({ currentPassword: "Password123!" })
-      .set("Authorization", `Bearer ${token}`)
-      .expect(204);
-  });
+    test("status 400: missing newPassword in request body", () => {
+      return request(app)
+        .post("/api/reset-password")
+        .send({ token: "valid-test-token" })
+        .expect(400)
+        .then(({ body }) => {
+          expect(body.msg).toBe("Missing required fields");
+        });
+    });
 
-  test("status 401: rejects when current password is incorrect", () => {
-    const token = jwt.sign(
-      { user_id: 1, username: "sarah_director" },
-      process.env.JWT_SECRET,
-    );
-
-    return request(app)
-      .delete("/api/user")
-      .send({ currentPassword: "wrongPassword" })
-      .set("Authorization", `Bearer ${token}`)
-      .expect(401)
-      .then(({ body }) => {
-        expect(body.msg).toBe("Invalid password");
-      });
-  });
-
-  test("status 401: no token provided", () => {
-    return request(app)
-      .delete("/api/user")
-      .send({ currentPassword: "Password123!" })
-      .expect(401);
-  });
-
-  test("status 400: missing currentPassword in request body", () => {
-    const token = jwt.sign(
-      { user_id: 1, username: "sarah_director" },
-      process.env.JWT_SECRET,
-    );
-
-    return request(app)
-      .delete("/api/user")
-      .send({})
-      .set("Authorization", `Bearer ${token}`)
-      .expect(400)
-      .then(({ body }) => {
-        expect(body.msg).toBe("Missing required fields");
-      });
-  });
-
-  test("only deletes the requesting user's own account, scoped via token not body", () => {
-    const token = jwt.sign(
-      { user_id: 1, username: "sarah_director" },
-      process.env.JWT_SECRET,
-    );
-
-    return request(app)
-      .delete("/api/user")
-      .send({ currentPassword: "Password123!", user_id: 2 })
-      .set("Authorization", `Bearer ${token}`)
-      .expect(204);
-  });
-});
-
-// FORGOT PASSWORD
-describe("POST /api/forgot-password", () => {
-  test("status 200: sends a reset email when the email exists", () => {
-    return request(app)
-      .post("/api/forgot-password")
-      .send({ email: "sarah@stagehand.com" })
-      .expect(200)
-      .then(({ body }) => {
-        expect(body.msg).toBe("Password reset email sent");
-        expect(sendPasswordResetEmail).toHaveBeenCalledTimes(1);
-      });
-  });
-
-  test("status 200: responds the same way even when the email doesn't exist (no user enumeration)", () => {
-    return request(app)
-      .post("/api/forgot-password")
-      .send({ email: "doesnotexist@stagehand.com" })
-      .expect(200)
-      .then(({ body }) => {
-        expect(body.msg).toBe("Password reset email sent");
-        expect(sendPasswordResetEmail).not.toHaveBeenCalled();
-      });
-  });
-
-  test("status 400: missing email in request body", () => {
-    return request(app)
-      .post("/api/forgot-password")
-      .send({})
-      .expect(400)
-      .then(({ body }) => {
-        expect(body.msg).toBe("Missing required fields");
-      });
-  });
-});
-
-// RESET PASSWORD
-describe("POST /api/reset-password", () => {
-  test("200: resets the password when token is valid and unexpired", () => {
-    return request(app)
-      .post("/api/reset-password")
-      .send({ token: "valid-test-token", newPassword: "newSecurePassword456" })
-      .expect(200)
-      .then(({ body }) => {
-        expect(body.msg).toBe("Password reset successfully");
-      });
-  });
-
-  test("status 401: rejects an invalid token", () => {
-    return request(app)
-      .post("/api/reset-password")
-      .send({ token: "not-a-real-token", newPassword: "newSecurePassword456" })
-      .expect(401)
-      .then(({ body }) => {
-        expect(body.msg).toBe("Invalid or expired token");
-      });
-  });
-
-  test("status 401: rejects an expired token", () => {
-    return request(app)
-      .post("/api/reset-password")
-      .send({
-        token: "expired-test-token",
-        newPassword: "newSecurePassword456",
-      })
-      .expect(401)
-      .then(({ body }) => {
-        expect(body.msg).toBe("Invalid or expired token");
-      });
-  });
-
-  test("status 400: missing newPassword in request body", () => {
-    return request(app)
-      .post("/api/reset-password")
-      .send({ token: "valid-test-token" })
-      .expect(400)
-      .then(({ body }) => {
-        expect(body.msg).toBe("Missing required fields");
-      });
-  });
-
-  test("token cannot be reused after a successful reset", () => {
-    return request(app)
-      .post("/api/reset-password")
-      .send({ token: "valid-test-token", newPassword: "newSecurePassword456" })
-      .expect(200)
-      .then(() => {
-        return request(app)
-          .post("/api/reset-password")
-          .send({
-            token: "valid-test-token",
-            newPassword: "anotherPassword789",
-          })
-          .expect(401);
-      });
+    test("token cannot be reused after a successful reset", () => {
+      return request(app)
+        .post("/api/reset-password")
+        .send({
+          token: "valid-test-token",
+          newPassword: "newSecurePassword456",
+        })
+        .expect(200)
+        .then(() => {
+          return request(app)
+            .post("/api/reset-password")
+            .send({
+              token: "valid-test-token",
+              newPassword: "anotherPassword789",
+            })
+            .expect(401);
+        });
+    });
   });
 });
 
 // PRODUCTION ROUTES
 
-// POST NEW PRODUCTION
+describe("PRODUCTION ROUTES", () => {
+  // POST NEW PRODUCTION
 
-describe("POST /api/productions", () => {
-  test("Status 201: returns new production data", () => {
-    const token = jwt.sign(
-      { user_id: 1, username: "sarah_director" },
-      process.env.JWT_SECRET,
-    );
+  describe("POST /api/productions", () => {
+    test("Status 201: returns new production data", () => {
+      const token = jwt.sign(
+        { user_id: 1, username: "sarah_director" },
+        process.env.JWT_SECRET,
+      );
 
-    const newProduction = {
-      title: "Nuns of Fury",
-      venue: "Edinburgh Fringe",
-      start_date: "2026-08-01",
-      end_date: "2026-08-24",
-    };
+      const newProduction = {
+        title: "Nuns of Fury",
+        venue: "Edinburgh Fringe",
+        start_date: "2026-08-01",
+        end_date: "2026-08-24",
+      };
 
-    return request(app)
-      .post("/api/productions")
-      .send(newProduction)
-      .set("Authorization", `Bearer ${token}`)
-      .expect(201)
-      .then(({ body }) => {
-        expect(body).toMatchObject({
-          id: 2,
-          title: "Nuns of Fury",
-          created_by: 1,
-          venue: "Edinburgh Fringe",
-          start_date: "2026-07-31T23:00:00.000Z",
-          end_date: "2026-08-23T23:00:00.000Z",
+      return request(app)
+        .post("/api/productions")
+        .send(newProduction)
+        .set("Authorization", `Bearer ${token}`)
+        .expect(201)
+        .then(({ body }) => {
+          expect(body).toMatchObject({
+            id: 2,
+            title: "Nuns of Fury",
+            created_by: 1,
+            venue: "Edinburgh Fringe",
+            start_date: "2026-07-31T23:00:00.000Z",
+            end_date: "2026-08-23T23:00:00.000Z",
+          });
         });
-      });
+    });
   });
-});
 
-// GET PRODUCTION BY ID
+  // GET PRODUCTION BY ID
 
-describe("GET /api/productions/:production_id", () => {
-  test("Status 200: returns a production object matching the id passed through", () => {
-    const token = jwt.sign(
-      { user_id: 1, username: "sarah_director" },
-      process.env.JWT_SECRET,
-    );
+  describe("GET /api/productions/:production_id", () => {
+    test("Status 200: returns a production object matching the id passed through", () => {
+      const token = jwt.sign(
+        { user_id: 1, username: "sarah_director" },
+        process.env.JWT_SECRET,
+      );
 
-    return request(app)
-      .get("/api/productions/1")
-      .set("Authorization", `Bearer ${token}`)
-      .expect(200)
-      .then(({ body }) => {
-        expect(body).toMatchObject({
-          id: 1,
-          title: "A Midsummer Night's Dream",
+      return request(app)
+        .get("/api/productions/1")
+        .set("Authorization", `Bearer ${token}`)
+        .expect(200)
+        .then(({ body }) => {
+          expect(body).toMatchObject({
+            id: 1,
+            title: "A Midsummer Night's Dream",
+          });
         });
-      });
-  });
+    });
 
-  test("Status 200: returns production when user is a company member but not the creator", () => {
-    const token = jwt.sign(
-      { user_id: 2, username: "tom_actor" },
-      process.env.JWT_SECRET,
-    );
+    test("Status 200: returns production when user is a company member but not the creator", () => {
+      const token = jwt.sign(
+        { user_id: 2, username: "tom_actor" },
+        process.env.JWT_SECRET,
+      );
 
-    return request(app)
-      .get("/api/productions/1")
-      .set("Authorization", `Bearer ${token}`)
-      .expect(200)
-      .then(({ body }) => {
-        expect(body).toMatchObject({
-          id: 1,
-          title: "A Midsummer Night's Dream",
+      return request(app)
+        .get("/api/productions/1")
+        .set("Authorization", `Bearer ${token}`)
+        .expect(200)
+        .then(({ body }) => {
+          expect(body).toMatchObject({
+            id: 1,
+            title: "A Midsummer Night's Dream",
+          });
         });
-      });
-  });
+    });
 
-  test("Status 400: returns appropriate error when id is not a number", () => {
-    const token = jwt.sign(
-      { user_id: 1, username: "sarah_director" },
-      process.env.JWT_SECRET,
-    );
+    test("Status 400: returns appropriate error when id is not a number", () => {
+      const token = jwt.sign(
+        { user_id: 1, username: "sarah_director" },
+        process.env.JWT_SECRET,
+      );
 
-    return request(app)
-      .get("/api/productions/notanumber")
-      .set("Authorization", `Bearer ${token}`)
-      .expect(400)
-      .then(({ body }) => {
-        expect(body.msg).toBe("Bad request");
-      });
-  });
-
-  test("Status 401: no token provided", () => {
-    return request(app)
-      .get("/api/productions/1")
-      .expect(401)
-      .then(({ body }) => {
-        expect(body.msg).toBe("No token provided");
-      });
-  });
-
-  test("Status 403: user is not a member of the production", () => {
-    const token = jwt.sign(
-      { user_id: 99, username: "uninvited_user" },
-      process.env.JWT_SECRET,
-    );
-
-    return request(app)
-      .get("/api/productions/1")
-      .set("Authorization", `Bearer ${token}`)
-      .expect(403)
-      .then(({ body }) => {
-        expect(body.msg).toBe("Forbidden");
-      });
-  });
-});
-
-// PATCH PRODUCTION BY ID - EDIT TITLE, DATES, COMPANY MEMBERS, VENUE
-
-describe("PATCH /api/productions/:production_id", () => {
-  test("Status 200: successfully updates venue when creator makes edits", () => {
-    const token = jwt.sign(
-      { user_id: 1, username: "sarah_director" },
-      process.env.JWT_SECRET,
-    );
-
-    return request(app)
-      .patch("/api/productions/1")
-      .send({ venue: "53Two" })
-      .set("Authorization", `Bearer ${token}`)
-      .expect(200)
-      .then(({ body }) => {
-        expect(body).toMatchObject({
-          id: 1,
-          venue: "53Two",
+      return request(app)
+        .get("/api/productions/notanumber")
+        .set("Authorization", `Bearer ${token}`)
+        .expect(400)
+        .then(({ body }) => {
+          expect(body.msg).toBe("Bad request");
         });
-      });
-  });
+    });
 
-  test("Status 200: successfully updates title", () => {
-    const token = jwt.sign(
-      { user_id: 1, username: "sarah_director" },
-      process.env.JWT_SECRET,
-    );
-
-    return request(app)
-      .patch("/api/productions/1")
-      .send({ title: "A Midsummer Night's Dream - Revised" })
-      .set("Authorization", `Bearer ${token}`)
-      .expect(200)
-      .then(({ body }) => {
-        expect(body).toMatchObject({
-          id: 1,
-          title: "A Midsummer Night's Dream - Revised",
+    test("Status 401: no token provided", () => {
+      return request(app)
+        .get("/api/productions/1")
+        .expect(401)
+        .then(({ body }) => {
+          expect(body.msg).toBe("No token provided");
         });
-      });
-  });
+    });
 
-  test("Status 200: successfully updates dates", () => {
-    const token = jwt.sign(
-      { user_id: 1, username: "sarah_director" },
-      process.env.JWT_SECRET,
-    );
+    test("Status 403: user is not a member of the production", () => {
+      const token = jwt.sign(
+        { user_id: 99, username: "uninvited_user" },
+        process.env.JWT_SECRET,
+      );
 
-    return request(app)
-      .patch("/api/productions/1")
-      .send({ start_date: "2026-10-01", end_date: "2026-10-14" })
-      .set("Authorization", `Bearer ${token}`)
-      .expect(200)
-      .then(({ body }) => {
-        expect(body).toMatchObject({
-          id: 1,
-          start_date: "2026-10-01",
-          end_date: "2026-10-14",
+      return request(app)
+        .get("/api/productions/1")
+        .set("Authorization", `Bearer ${token}`)
+        .expect(403)
+        .then(({ body }) => {
+          expect(body.msg).toBe("Forbidden");
         });
-      });
+    });
   });
 
-  test("Status 200: successfully updates multiple fields at once", () => {
-    const token = jwt.sign(
-      { user_id: 1, username: "sarah_director" },
-      process.env.JWT_SECRET,
-    );
+  // GET PRODUCTIONS BY USER_ID
 
-    return request(app)
-      .patch("/api/productions/1")
-      .send({ venue: "53Two", title: "Nuns of Fury" })
-      .set("Authorization", `Bearer ${token}`)
-      .expect(200)
-      .then(({ body }) => {
-        expect(body).toMatchObject({
-          id: 1,
-          venue: "53Two",
-          title: "Nuns of Fury",
+  describe("GET /api/user/productions", () => {
+    test("Status 200: responds with array of objects of productions user has created", () => {
+      const token = jwt.sign(
+        { user_id: 1, username: "sarah_director" },
+        process.env.JWT_SECRET,
+      );
+
+      return request(app)
+        .get("/api/user/productions")
+        .set("Authorization", `Bearer ${token}`)
+        .expect(200)
+        .then(({ body }) => {
+          expect(body).toMatchObject([
+            {
+              title: "A Midsummer Night's Dream",
+              venue: "The Lowry Studio, Salford",
+              start_date: "2026-08-31T23:00:00.000Z",
+              end_date: "2026-09-13T23:00:00.000Z",
+            },
+          ]);
         });
-      });
+    });
+
+    test("Status 200: responds with an array of productions user is linked to", () => {
+      const token = jwt.sign(
+        { user_id: 3, username: "priya_actor" },
+        process.env.JWT_SECRET,
+      );
+      return request(app)
+        .get("/api/user/productions")
+        .set("Authorization", `Bearer ${token}`)
+        .expect(200)
+        .then(({ body }) => {
+          expect(body).toMatchObject([
+            {
+              title: "A Midsummer Night's Dream",
+              venue: "The Lowry Studio, Salford",
+              start_date: "2026-08-31T23:00:00.000Z",
+              end_date: "2026-09-13T23:00:00.000Z",
+            },
+          ]);
+        });
+    });
   });
 
-  test("Status 403: company member who is not the creator cannot edit", () => {
-    const token = jwt.sign(
-      { user_id: 2, username: "tom_actor" },
-      process.env.JWT_SECRET,
-    );
+  // PATCH PRODUCTION BY ID - EDIT TITLE, DATES, COMPANY MEMBERS, VENUE
 
-    return request(app)
-      .patch("/api/productions/1")
-      .send({ venue: "53Two" })
-      .set("Authorization", `Bearer ${token}`)
-      .expect(403)
-      .then(({ body }) => {
-        expect(body.msg).toBe("Forbidden");
-      });
+  describe("PATCH /api/productions/:production_id", () => {
+    test("Status 200: successfully updates venue when creator makes edits", () => {
+      const token = jwt.sign(
+        { user_id: 1, username: "sarah_director" },
+        process.env.JWT_SECRET,
+      );
+
+      return request(app)
+        .patch("/api/productions/1")
+        .send({ venue: "53Two" })
+        .set("Authorization", `Bearer ${token}`)
+        .expect(200)
+        .then(({ body }) => {
+          expect(body).toMatchObject({
+            id: 1,
+            venue: "53Two",
+          });
+        });
+    });
+
+    test("Status 200: successfully updates title", () => {
+      const token = jwt.sign(
+        { user_id: 1, username: "sarah_director" },
+        process.env.JWT_SECRET,
+      );
+
+      return request(app)
+        .patch("/api/productions/1")
+        .send({ title: "A Midsummer Night's Dream - Revised" })
+        .set("Authorization", `Bearer ${token}`)
+        .expect(200)
+        .then(({ body }) => {
+          expect(body).toMatchObject({
+            id: 1,
+            title: "A Midsummer Night's Dream - Revised",
+          });
+        });
+    });
+
+    test("Status 200: successfully updates dates", () => {
+      const token = jwt.sign(
+        { user_id: 1, username: "sarah_director" },
+        process.env.JWT_SECRET,
+      );
+
+      return request(app)
+        .patch("/api/productions/1")
+        .send({ start_date: "2026-10-01", end_date: "2026-10-14" })
+        .set("Authorization", `Bearer ${token}`)
+        .expect(200)
+        .then(({ body }) => {
+          expect(body).toMatchObject({
+            id: 1,
+            start_date: "2026-10-01",
+            end_date: "2026-10-14",
+          });
+        });
+    });
+
+    test("Status 200: successfully updates multiple fields at once", () => {
+      const token = jwt.sign(
+        { user_id: 1, username: "sarah_director" },
+        process.env.JWT_SECRET,
+      );
+
+      return request(app)
+        .patch("/api/productions/1")
+        .send({ venue: "53Two", title: "Nuns of Fury" })
+        .set("Authorization", `Bearer ${token}`)
+        .expect(200)
+        .then(({ body }) => {
+          expect(body).toMatchObject({
+            id: 1,
+            venue: "53Two",
+            title: "Nuns of Fury",
+          });
+        });
+    });
+
+    test("Status 403: company member who is not the creator cannot edit", () => {
+      const token = jwt.sign(
+        { user_id: 2, username: "tom_actor" },
+        process.env.JWT_SECRET,
+      );
+
+      return request(app)
+        .patch("/api/productions/1")
+        .send({ venue: "53Two" })
+        .set("Authorization", `Bearer ${token}`)
+        .expect(403)
+        .then(({ body }) => {
+          expect(body.msg).toBe("Forbidden");
+        });
+    });
+
+    test("Status 403: user with no connection to the production cannot edit", () => {
+      const token = jwt.sign(
+        { user_id: 99, username: "uninvited_user" },
+        process.env.JWT_SECRET,
+      );
+
+      return request(app)
+        .patch("/api/productions/1")
+        .send({ venue: "53Two" })
+        .set("Authorization", `Bearer ${token}`)
+        .expect(403)
+        .then(({ body }) => {
+          expect(body.msg).toBe("Forbidden");
+        });
+    });
+
+    test("Status 400: no valid fields provided in request body", () => {
+      const token = jwt.sign(
+        { user_id: 1, username: "sarah_director" },
+        process.env.JWT_SECRET,
+      );
+
+      return request(app)
+        .patch("/api/productions/1")
+        .send({})
+        .set("Authorization", `Bearer ${token}`)
+        .expect(400)
+        .then(({ body }) => {
+          expect(body.msg).toBe("Missing required fields");
+        });
+    });
+
+    test("Status 400: invalid production_id", () => {
+      const token = jwt.sign(
+        { user_id: 1, username: "sarah_director" },
+        process.env.JWT_SECRET,
+      );
+
+      return request(app)
+        .patch("/api/productions/notanumber")
+        .send({ venue: "53Two" })
+        .set("Authorization", `Bearer ${token}`)
+        .expect(400)
+        .then(({ body }) => {
+          expect(body.msg).toBe("Bad request");
+        });
+    });
+
+    test("Status 401: no token provided", () => {
+      return request(app)
+        .patch("/api/productions/1")
+        .send({ venue: "53Two" })
+        .expect(401)
+        .then(({ body }) => {
+          expect(body.msg).toBe("No token provided");
+        });
+    });
   });
 
-  test("Status 403: user with no connection to the production cannot edit", () => {
-    const token = jwt.sign(
-      { user_id: 99, username: "uninvited_user" },
-      process.env.JWT_SECRET,
-    );
+  // DELETE PRODUCTION BY ID
 
-    return request(app)
-      .patch("/api/productions/1")
-      .send({ venue: "53Two" })
-      .set("Authorization", `Bearer ${token}`)
-      .expect(403)
-      .then(({ body }) => {
-        expect(body.msg).toBe("Forbidden");
-      });
-  });
+  describe("DELETE /api/productions/:production_id", () => {
+    test("status 204: successfully deletes production when creator is logged in", () => {
+      const token = jwt.sign(
+        { user_id: 1, username: "sarah_director" },
+        process.env.JWT_SECRET,
+      );
 
-  test("Status 400: no valid fields provided in request body", () => {
-    const token = jwt.sign(
-      { user_id: 1, username: "sarah_director" },
-      process.env.JWT_SECRET,
-    );
+      return request(app)
+        .delete("/api/productions/1")
+        .set("Authorization", `Bearer ${token}`)
+        .expect(204);
+    });
 
-    return request(app)
-      .patch("/api/productions/1")
-      .send({})
-      .set("Authorization", `Bearer ${token}`)
-      .expect(400)
-      .then(({ body }) => {
-        expect(body.msg).toBe("Missing required fields");
-      });
-  });
+    test("status 403: company member who is not creator cannot delete", () => {
+      const token = jwt.sign(
+        { user_id: 2, username: "tom_actor" },
+        process.env.JWT_SECRET,
+      );
 
-  test("Status 400: invalid production_id", () => {
-    const token = jwt.sign(
-      { user_id: 1, username: "sarah_director" },
-      process.env.JWT_SECRET,
-    );
+      return request(app)
+        .delete("/api/productions/1")
+        .set("Authorization", `Bearer ${token}`)
+        .expect(403)
+        .then(({ body }) => {
+          expect(body.msg).toBe("Forbidden");
+        });
+    });
 
-    return request(app)
-      .patch("/api/productions/notanumber")
-      .send({ venue: "53Two" })
-      .set("Authorization", `Bearer ${token}`)
-      .expect(400)
-      .then(({ body }) => {
-        expect(body.msg).toBe("Bad request");
-      });
-  });
+    test("status 401: no token provided", () => {
+      return request(app).delete("/api/productions/1").expect(401);
+    });
 
-  test("Status 401: no token provided", () => {
-    return request(app)
-      .patch("/api/productions/1")
-      .send({ venue: "53Two" })
-      .expect(401)
-      .then(({ body }) => {
-        expect(body.msg).toBe("No token provided");
-      });
-  });
-});
+    test("status 400: invalid production_id", () => {
+      const token = jwt.sign(
+        { user_id: 1, username: "sarah_director" },
+        process.env.JWT_SECRET,
+      );
 
-// DELETE PRODUCTION BY ID
-
-describe("DELETE /api/productions/:production_id", () => {
-  test("status 204: successfully deletes production when creator is logged in", () => {
-    const token = jwt.sign(
-      { user_id: 1, username: "sarah_director" },
-      process.env.JWT_SECRET,
-    );
-
-    return request(app)
-      .delete("/api/productions/1")
-      .set("Authorization", `Bearer ${token}`)
-      .expect(204);
-  });
-
-  test("status 403: company member who is not creator cannot delete", () => {
-    const token = jwt.sign(
-      { user_id: 2, username: "tom_actor" },
-      process.env.JWT_SECRET,
-    );
-
-    return request(app)
-      .delete("/api/productions/1")
-      .set("Authorization", `Bearer ${token}`)
-      .expect(403)
-      .then(({ body }) => {
-        expect(body.msg).toBe("Forbidden");
-      });
-  });
-
-  test("status 401: no token provided", () => {
-    return request(app).delete("/api/productions/1").expect(401);
-  });
-
-  test("status 400: invalid production_id", () => {
-    const token = jwt.sign(
-      { user_id: 1, username: "sarah_director" },
-      process.env.JWT_SECRET,
-    );
-
-    return request(app)
-      .delete("/api/productions/notanumber")
-      .set("Authorization", `Bearer ${token}`)
-      .expect(400)
-      .then(({ body }) => {
-        expect(body.msg).toBe("Bad request");
-      });
+      return request(app)
+        .delete("/api/productions/notanumber")
+        .set("Authorization", `Bearer ${token}`)
+        .expect(400)
+        .then(({ body }) => {
+          expect(body.msg).toBe("Bad request");
+        });
+    });
   });
 });
 
 // COMPANY MEMBER ROUTES
 
-// GET ALL COMPANY MEMBERS BY PRODUCTION ID
+describe("COMPANY MEMBER ROUTES", () => {
+  // GET ALL COMPANY MEMBERS BY PRODUCTION ID
 
-// POST NEW COMPANY MEMBER TO PRODUCTION BY EMAIL
+  describe("GET /api/productions/:production_id/members", () => {
+    test("Status 200: Returns an array of member ids and role when passed through a production ID", () => {
+      const token = jwt.sign(
+        { user_id: 1, username: "sarah_director" },
+        process.env.JWT_SECRET,
+      );
 
-// DELETE COMPANY MEMBER BY ID
+      return request(app)
+        .get("/api/productions/1/members")
+        .set("Authorization", `Bearer ${token}`)
+        .expect(200)
+        .then(({ body }) => {
+          expect(Array.isArray(body)).toBe(true);
+          expect(body.length).toBeGreaterThan(0);
+          body.forEach((member) => {
+            expect(member).toMatchObject({
+              user_id: expect.any(Number),
+              username: expect.any(String),
+              role: expect.any(String),
+            });
+          });
+        });
+    });
+
+    test("Status 200: A company member (not just the creator) can also view the members list", () => {
+      const token = jwt.sign(
+        { user_id: 2, username: "tom_actor" },
+        process.env.JWT_SECRET,
+      );
+
+      return request(app)
+        .get("/api/productions/1/members")
+        .set("Authorization", `Bearer ${token}`)
+        .expect(200)
+        .then(({ body }) => {
+          expect(body.length).toBeGreaterThan(0);
+        });
+    });
+
+    test("Status 401: No token provided", () => {
+      return request(app)
+        .get("/api/productions/1/members")
+        .expect(401)
+        .then(({ body }) => {
+          expect(body.msg).toEqual("No token provided");
+        });
+    });
+
+    test("Status 401: Invalid/malformed token", () => {
+      return request(app)
+        .get("/api/productions/1/members")
+        .set("Authorization", `Bearer not-a-real-token`)
+        .expect(401);
+    });
+
+    test("Status 403: User is not a member of the production and did not create it", () => {
+      const token = jwt.sign(
+        { user_id: 99, username: "outsider" },
+        process.env.JWT_SECRET,
+      );
+
+      return request(app)
+        .get("/api/productions/1/members")
+        .set("Authorization", `Bearer ${token}`)
+        .expect(403)
+        .then(({ body }) => {
+          expect(body.msg).toEqual("Forbidden");
+        });
+    });
+  });
+
+  // POST NEW COMPANY MEMBER TO PRODUCTION BY EMAIL
+  describe("POST /api/productions/:production_id/members", () => {
+    test("Status 201: Creates a new user and adds them as a company member when the email doesn't match an existing user", () => {
+      const token = jwt.sign(
+        { user_id: 1, username: "sarah_director" },
+        process.env.JWT_SECRET,
+      );
+
+      const newMember = {
+        email: "newmember@rehearsal.com",
+        role: "Actor",
+      };
+
+      return request(app)
+        .post("/api/productions/1/members")
+        .send(newMember)
+        .set("Authorization", `Bearer ${token}`)
+        .expect(201)
+        .then(({ body }) => {
+          expect(body).toMatchObject({
+            production_id: 1,
+            user_id: 8,
+            role: "Actor",
+          });
+        });
+    });
+
+    test("Status 201: Adds an existing user as a company member when the email matches an existing user", () => {
+      const token = jwt.sign(
+        { user_id: 1, username: "sarah_director" },
+        process.env.JWT_SECRET,
+      );
+
+      const existingMember = {
+        email: "jess@stagehand.com",
+        role: "Actor",
+      };
+
+      return request(app)
+        .post("/api/productions/1/members")
+        .send(existingMember)
+        .set("Authorization", `Bearer ${token}`)
+        .expect(201)
+        .then(({ body }) => {
+          expect(body).toMatchObject({
+            production_id: 1,
+            user_id: 5,
+            role: "Actor",
+          });
+        });
+    });
+
+    test("Status 403: Only the production creator can add a new company member", () => {
+      const token = jwt.sign(
+        { user_id: 2, username: "cast_member_two" },
+        process.env.JWT_SECRET,
+      );
+
+      const newMember = {
+        email: "newmember@rehearsal.com",
+        role: "Actor",
+      };
+
+      return request(app)
+        .post("/api/productions/1/members")
+        .send(newMember)
+        .set("Authorization", `Bearer ${token}`)
+        .expect(403)
+        .then(({ body }) => {
+          expect(body.msg).toEqual("Forbidden");
+        });
+    });
+  });
+
+  // DELETE COMPANY MEMBER BY ID
+  describe("DELETE /api/productions/:production_id/:member_id", () => {
+    test("status 204: successfully deletes company_member from the production", () => {
+      const token = jwt.sign(
+        { user_id: 1, username: "sarah_director" },
+        process.env.JWT_SECRET,
+      );
+
+      return request(app)
+        .delete("/api/productions/1/2")
+        .set("Authorization", `Bearer ${token}`)
+        .expect(204);
+    });
+
+    test("status 401: no token provided", () => {
+      return request(app)
+        .delete("/api/productions/1/2")
+        .expect(401)
+        .then(({ body }) => {
+          expect(body.msg).toEqual("No token provided");
+        });
+    });
+
+    test("status 403: only the production creator can delete a company member", () => {
+      const token = jwt.sign(
+        { user_id: 3, username: "cast_member_three" },
+        process.env.JWT_SECRET,
+      );
+
+      return request(app)
+        .delete("/api/productions/1/2")
+        .set("Authorization", `Bearer ${token}`)
+        .expect(403)
+        .then(({ body }) => {
+          expect(body.msg).toEqual("Forbidden");
+        });
+    });
+  });
+});
 
 // REHEARSAL ROUTES
 
-// GET ALL REHEARSALS BY PRODUCTION ID
+describe("REHEARSAL ROUTES", () => {
+  // GET ALL REHEARSALS BY PRODUCTION ID
 
-// POST NEW REHEARSAL TO PRODUCTION BY ID
+  describe("GET /api/productions/:production_id/rehearsals", () => {
+    test("Status 200: Returns an array of rehearsals for production", () => {
+      const token = jwt.sign(
+        { user_id: 1, username: "sarah_director" },
+        process.env.JWT_SECRET,
+      );
 
-// PATCH REHEARSAL BY ID - EDIT DATE, TIME, LOCATION, NOTES
+      return request(app)
+        .get("/api/productions/1/rehearsals")
+        .set("Authorization", `Bearer ${token}`)
+        .expect(200)
+        .then(({ body }) => {
+          expect(Array.isArray(body)).toBe(true);
+          expect(body.length).toBeGreaterThan(0);
+          body.forEach((rehearsal) => {
+            expect(rehearsal).toMatchObject({
+              production_id: expect.any(Number),
+              date: expect.any(String),
+              start_time: expect.any(String),
+              end_time: expect.any(String),
+              location: expect.any(String),
+              notes: expect.any(String),
+              scenes: expect.any(Array),
+              called: expect.any(Array),
+            });
+          });
+        });
+    });
 
-// GET ALL REHEARSALS BY USER_ID
+    test("Status 200: Any company member (not just the creator) can view rehearsals", () => {
+      const token = jwt.sign(
+        { user_id: 2, username: "cast_member_two" },
+        process.env.JWT_SECRET,
+      );
 
-// DELETE A REHEARSAL BY ID
+      return request(app)
+        .get("/api/productions/1/rehearsals")
+        .set("Authorization", `Bearer ${token}`)
+        .expect(200)
+        .then(({ body }) => {
+          expect(body.length).toBeGreaterThan(0);
+        });
+    });
+
+    test("Status 401: No token provided", () => {
+      return request(app)
+        .get("/api/productions/1/rehearsals")
+        .expect(401)
+        .then(({ body }) => {
+          expect(body.msg).toEqual("No token provided");
+        });
+    });
+
+    test("Status 403: User is neither the creator nor a company member", () => {
+      const token = jwt.sign(
+        { user_id: 99, username: "outsider" },
+        process.env.JWT_SECRET,
+      );
+
+      return request(app)
+        .get("/api/productions/1/rehearsals")
+        .set("Authorization", `Bearer ${token}`)
+        .expect(403)
+        .then(({ body }) => {
+          expect(body.msg).toEqual("Forbidden");
+        });
+    });
+
+    test("Status 400: production_id is not a valid number", () => {
+      const token = jwt.sign(
+        { user_id: 1, username: "sarah_director" },
+        process.env.JWT_SECRET,
+      );
+
+      return request(app)
+        .get("/api/productions/not-a-number/rehearsals")
+        .set("Authorization", `Bearer ${token}`)
+        .expect(403)
+        .then(({ body }) => {
+          expect(body.msg).toEqual("Forbidden");
+        });
+    });
+  });
+
+  // POST NEW REHEARSAL TO PRODUCTION BY ID
+
+  describe.only("POST /api/productions/:production_id/rehearsals", () => {
+    test("Status 201: Returns new rehearsal data", () => {
+      const token = jwt.sign(
+        { user_id: 1, username: "sarah_director" },
+        process.env.JWT_SECRET,
+      );
+
+      const newRehearsal = {
+        date: "2026-08-08",
+        start_time: "10:00",
+        end_time: "17:00",
+        location: "Studio 6, Manchester",
+        notes: "Full run",
+      };
+
+      return request(app)
+        .post("/api/productions/1/rehearsals")
+        .send(newRehearsal)
+        .set("Authorization", `Bearer ${token}`)
+        .expect(201)
+        .then(({ body }) => {
+          expect(body).toMatchObject({
+            id: expect.any(Number),
+            date: "2026-08-07T23:00:00.000Z",
+            start_time: "10:00:00",
+            end_time: "17:00:00",
+            location: "Studio 6, Manchester",
+            notes: "Full run",
+            scenes: [],
+          });
+        });
+    });
+
+    test("Status 201: Creates a rehearsal with scenes but no notes, defaulting notes to an empty string", () => {
+      const token = jwt.sign(
+        { user_id: 1, username: "sarah_director" },
+        process.env.JWT_SECRET,
+      );
+
+      const newRehearsal = {
+        date: "2026-08-10",
+        start_time: "10:00",
+        end_time: "13:00",
+        location: "Studio 6, Manchester",
+        scenes: [1, 3],
+      };
+
+      return request(app)
+        .post("/api/productions/1/rehearsals")
+        .send(newRehearsal)
+        .set("Authorization", `Bearer ${token}`)
+        .expect(201)
+        .then(({ body }) => {
+          expect(body).toMatchObject({
+            id: expect.any(Number),
+            date: "2026-08-09T23:00:00.000Z",
+            scenes: [1, 3],
+            notes: "",
+          });
+        });
+    });
+
+    test("Status 401: No token provided", () => {
+      const newRehearsal = {
+        date: "2026-08-08",
+        start_time: "10:00",
+        end_time: "17:00",
+        location: "Studio 6, Manchester",
+        notes: "Full run",
+      };
+
+      return request(app)
+        .post("/api/productions/1/rehearsals")
+        .send(newRehearsal)
+        .expect(401)
+        .then(({ body }) => {
+          expect(body.msg).toEqual("No token provided");
+        });
+    });
+
+    test("Status 403: User is not the production creator", () => {
+      const token = jwt.sign(
+        { user_id: 2, username: "cast_member_two" },
+        process.env.JWT_SECRET,
+      );
+
+      const newRehearsal = {
+        date: "2026-08-08",
+        start_time: "10:00",
+        end_time: "17:00",
+        location: "Studio 6, Manchester",
+        notes: "Full run",
+      };
+
+      return request(app)
+        .post("/api/productions/1/rehearsals")
+        .send(newRehearsal)
+        .set("Authorization", `Bearer ${token}`)
+        .expect(403)
+        .then(({ body }) => {
+          expect(body.msg).toEqual("Forbidden");
+        });
+    });
+
+    test("Status 403: production_id is not valid", () => {
+      const token = jwt.sign(
+        { user_id: 1, username: "sarah_director" },
+        process.env.JWT_SECRET,
+      );
+
+      const newRehearsal = {
+        date: "2026-08-08",
+        start_time: "10:00",
+        end_time: "17:00",
+        location: "Studio 6, Manchester",
+        notes: "Full run",
+      };
+
+      return request(app)
+        .post("/api/productions/3/rehearsals")
+        .send(newRehearsal)
+        .set("Authorization", `Bearer ${token}`)
+        .expect(403)
+        .then(({ body }) => {
+          expect(body.msg).toEqual("Forbidden");
+        });
+    });
+
+    test("Status 400: Missing required fields", () => {
+      const token = jwt.sign(
+        { user_id: 1, username: "sarah_director" },
+        process.env.JWT_SECRET,
+      );
+
+      return request(app)
+        .post("/api/productions/1/rehearsals")
+        .send({ notes: "Full run" })
+        .set("Authorization", `Bearer ${token}`)
+        .expect(400)
+        .then(({ body }) => {
+          expect(body.msg).toEqual("Bad request");
+        });
+    });
+  });
+
+  // PATCH REHEARSAL BY ID - EDIT DATE, TIME, LOCATION, NOTES
+  // GET ALL REHEARSALS BY USER_ID
+  // DELETE A REHEARSAL BY ID
+});
 
 // CALL ROUTES
 

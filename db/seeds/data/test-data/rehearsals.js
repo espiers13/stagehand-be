@@ -14,7 +14,7 @@ const testRehearsals = [
     start_time: "14:00",
     end_time: "18:00",
     location: "Studio 3, Manchester",
-    notes: "Act 1 blocking",
+    scenes: [2, 5, 7],
     called: [1, 2, 3],
   },
   {

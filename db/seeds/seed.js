@@ -46,14 +46,15 @@ const seed = ({
     .then(() => {
       return db.query(`
         CREATE TABLE rehearsals(
-        id SERIAL PRIMARY KEY,
-        production_id INT REFERENCES productions(id) ON DELETE CASCADE,
-        date DATE NOT NULL,
-        start_time TIME NOT NULL,
-        end_time TIME NOT NULL,
-        location VARCHAR(255) NOT NULL,
-        notes TEXT,
-        called INT[] DEFAULT '{}');`);
+id SERIAL PRIMARY KEY,
+production_id INT REFERENCES productions(id) ON DELETE CASCADE,
+date DATE NOT NULL,
+start_time TIME NOT NULL,
+end_time TIME NOT NULL,
+location VARCHAR(255) NOT NULL,
+notes TEXT DEFAULT '',
+scenes INT[] DEFAULT '{}',
+called INT[] DEFAULT '{}');`);
     })
     .then(() => {
       return db.query(`CREATE TABLE rehearsal_attendance(
@@ -115,7 +116,7 @@ const seed = ({
     })
     .then(() => {
       const insertRehearsalsString = format(
-        "INSERT INTO rehearsals (production_id, date, start_time, end_time, location, notes, called) VALUES %L RETURNING *;",
+        "INSERT INTO rehearsals (production_id, date, start_time, end_time, location, notes, scenes, called) VALUES %L RETURNING *;",
         rehearsalsData.map(
           ({
             production_id,
@@ -124,6 +125,7 @@ const seed = ({
             end_time,
             location,
             notes,
+            scenes,
             called,
           }) => [
             production_id,
@@ -131,8 +133,9 @@ const seed = ({
             start_time,
             end_time,
             location,
-            notes,
-            `{${called.join(",")}}`,
+            notes ?? "",
+            `{${(scenes ?? []).join(",")}}`,
+            `{${(called ?? []).join(",")}}`,
           ],
         ),
       );

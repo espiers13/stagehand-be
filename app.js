@@ -9,22 +9,36 @@ const {
   registerUser,
   getLoggedInUser,
   getUserProductions,
-  postNewProduction,
   changePassword,
   deleteUser,
   forgotPassword,
   resetPassword,
+} = require("./db/controllers/user-controllers.js");
+
+const {
   getProductionById,
   updateProductionData,
   deleteProduction,
-} = require("./db/controllers/user-controllers.js");
+  postNewProduction,
+} = require("./db/controllers/production-controllers.js");
+
+const {
+  getMembersByProduction,
+  postNewCompanyMember,
+  deleteCompanyMember,
+} = require("./db/controllers/company-member-controllers.js");
+
+const {
+  getRehearsalsByProduction,
+  postNewRehearsal,
+} = require("./db/controllers/rehearsal-controllers.js");
 
 // MIDDLEWARE
 
 app.use(cors());
 app.use(express.json());
 
-// AUTH ROUTES
+// ** AUTH ROUTES **
 
 // POST LOGIN USER
 
@@ -58,7 +72,7 @@ app.post("/api/reset-password", resetPassword);
 
 app.delete("/api/user", verifyToken, deleteUser);
 
-// PRODUCTION ROUTES
+// ** PRODUCTION ROUTES **
 
 // POST NEW PRODUCTION
 
@@ -76,19 +90,49 @@ app.patch("/api/productions/:production_id", verifyToken, updateProductionData);
 
 app.delete("/api/productions/:production_id", verifyToken, deleteProduction);
 
-// COMPANY MEMBER ROUTES
+// ** COMPANY MEMBER ROUTES **
 
 // GET ALL COMPANY MEMBERS BY PRODUCTION ID
 
+app.get(
+  "/api/productions/:production_id/members",
+  verifyToken,
+  getMembersByProduction,
+);
+
 // POST NEW COMPANY MEMBER TO PRODUCTION BY EMAIL
+
+app.post(
+  "/api/productions/:production_id/members",
+  verifyToken,
+  postNewCompanyMember,
+);
 
 // DELETE COMPANY MEMBER BY ID
 
-// REHEARSAL ROUTES
+app.delete(
+  "/api/productions/:production_id/:member_id",
+  verifyToken,
+  deleteCompanyMember,
+);
+
+// ** REHEARSAL ROUTES **
 
 // GET ALL REHEARSALS BY PRODUCTION ID
 
+app.get(
+  "/api/productions/:production_id/rehearsals",
+  verifyToken,
+  getRehearsalsByProduction,
+);
+
 // POST NEW REHEARSAL TO PRODUCTION BY ID
+
+app.post(
+  "/api/productions/:production_id/rehearsals",
+  verifyToken,
+  postNewRehearsal,
+);
 
 // PATCH REHEARSAL BY ID - EDIT DATE, TIME, LOCATION, NOTES
 
