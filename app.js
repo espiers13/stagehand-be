@@ -34,6 +34,10 @@ const {
   patchRehearsal,
   deleteRehearsal,
   getUserSchedule,
+  getAllCalls,
+  postNewCall,
+  deleteCall,
+  patchAttendance,
 } = require("./db/controllers/rehearsal-controllers.js");
 
 // MIDDLEWARE
@@ -157,15 +161,37 @@ app.delete(
 
 app.get("/api/users/me/schedule", verifyToken, getUserSchedule);
 
-// CALL ROUTES
-
 // GET ALL CALLS BY REHEARSAL ID
+
+app.get(
+  "/api/productions/:production_id/rehearsals/:rehearsal_id/attendance",
+  verifyToken,
+  getAllCalls,
+);
 
 // POST NEW USER TO REHEARSAL BY ID
 
+app.post(
+  "/api/productions/:production_id/rehearsals/:rehearsal_id/attendance",
+  verifyToken,
+  postNewCall,
+);
+
 // DELETE USER FROM REHEARSAL BY ID
 
+app.delete(
+  "/api/productions/:production_id/rehearsals/:rehearsal_id/attendance/:user_id",
+  verifyToken,
+  deleteCall,
+);
+
 // PATCH - CONFIRM OR UNCONFIRM USER ATTENDANCE BY REHEARSAL ID AND USER ID
+
+app.patch(
+  "/api/productions/:production_id/rehearsals/:rehearsal_id/attendance/:user_id",
+  verifyToken,
+  patchAttendance,
+);
 
 // ERRORS
 

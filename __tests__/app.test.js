@@ -1252,6 +1252,126 @@ describe("REHEARSAL ROUTES", () => {
           expect(body.msg).toEqual("Bad request");
         });
     });
+
+    // REHEARSAL ATTENDANCE
+
+    describe("REHEARSAL ATTENDANCE", () => {
+      test("Status 201: Returns rehearsal including called array", () => {
+        const token = jwt.sign(
+          { user_id: 1, username: "sarah_director" },
+          process.env.JWT_SECRET,
+        );
+
+        const newRehearsal = {
+          date: "2026-08-08",
+          start_time: "10:00",
+          end_time: "17:00",
+          location: "Studio 6, Manchester",
+          notes: "Full run",
+          called: [2, 3],
+        };
+
+        return request(app)
+          .post("/api/productions/1/rehearsals")
+          .send(newRehearsal)
+          .set("Authorization", `Bearer ${token}`)
+          .expect(201)
+          .then(({ body }) => {
+            expect(body).toMatchObject({
+              id: expect.any(Number),
+              called: expect.arrayContaining([2, 3]),
+            });
+            expect(body.called).toHaveLength(2);
+          });
+      });
+
+      test("Status 201: called defaults to the full company when omitted", () => {
+        const token = jwt.sign(
+          { user_id: 1, username: "sarah_director" },
+          process.env.JWT_SECRET,
+        );
+
+        const newRehearsal = {
+          date: "2026-08-08",
+          start_time: "10:00",
+          end_time: "17:00",
+          location: "Studio 6, Manchester",
+        };
+
+        return db
+          .query(`SELECT user_id FROM company_members WHERE production_id = 1`)
+          .then(({ rows: companyRows }) => {
+            const expectedIds = companyRows.map((r) => r.user_id).sort();
+
+            return request(app)
+              .post("/api/productions/1/rehearsals")
+              .send(newRehearsal)
+              .set("Authorization", `Bearer ${token}`)
+              .expect(201)
+              .then(({ body }) => {
+                expect(body.called.sort()).toEqual(expectedIds);
+              });
+          });
+      });
+
+      test("Status 201: Creates rehearsalAttendance rows for each company member in called, confirmed defaults to true", () => {
+        const token = jwt.sign(
+          { user_id: 1, username: "sarah_director" },
+          process.env.JWT_SECRET,
+        );
+
+        const newRehearsal = {
+          date: "2026-08-08",
+          start_time: "10:00",
+          end_time: "17:00",
+          location: "Studio 6, Manchester",
+          called: [2, 3, 4],
+        };
+
+        return request(app)
+          .post("/api/productions/1/rehearsals")
+          .send(newRehearsal)
+          .set("Authorization", `Bearer ${token}`)
+          .expect(201)
+          .then(({ body }) => {
+            return db.query(
+              `SELECT * FROM rehearsal_attendance WHERE rehearsal_id = $1`,
+              [body.id],
+            );
+          })
+          .then(({ rows }) => {
+            expect(rows).toHaveLength(3);
+            expect(rows.map((r) => r.user_id).sort()).toEqual([2, 3, 4]);
+            rows.forEach((row) => {
+              expect(row.confirmed).toBe(true);
+            });
+          });
+      });
+
+      test("Status 400: called includes a user who is not a company member of the production", () => {
+        const token = jwt.sign(
+          { user_id: 1, username: "sarah_director" },
+          process.env.JWT_SECRET,
+        );
+
+        const newRehearsal = {
+          date: "2026-08-08",
+          start_time: "10:00",
+          end_time: "17:00",
+          location: "Studio 6, Manchester",
+          called: [2, 999],
+        };
+
+        return request(app)
+          .post("/api/productions/1/rehearsals")
+          .send(newRehearsal)
+          .set("Authorization", `Bearer ${token}`)
+          .expect(400)
+          .then(({ body }) => {
+            expect(body.msg).toEqual("Bad request");
+          });
+      });
+    });
   });
 
   // PATCH REHEARSAL BY ID - EDIT DATE, TIME, LOCATION, NOTES
@@ -1475,10 +1595,478 @@ describe("REHEARSAL ROUTES", () => {
 
 // CALL ROUTES
 
-// GET ALL CALLS BY REHEARSAL ID
+describe("CALL ROUTES", () => {
+  // GET ALL CALLS BY REHEARSAL ID
 
-// POST NEW USER TO REHEARSAL BY ID
+  describe("GET /api/productions/:production_id/rehearsals/:rehearsal_id/attendance", () => {
+    test("Status 200: Returns an array of attendance objects showing if company members are attending or not", () => {
+      const token = jwt.sign(
+        { user_id: 1, username: "sarah_director" },
+        process.env.JWT_SECRET,
+      );
 
-// DELETE USER FROM REHEARSAL BY ID
+      return request(app)
+        .get("/api/productions/1/rehearsals/1/attendance")
+        .set("Authorization", `Bearer ${token}`)
+        .expect(200)
+        .then(({ body }) => {
+          expect(Array.isArray(body)).toBe(true);
+          expect(body.length).toBeGreaterThan(0);
+          body.forEach((attendee) => {
+            expect(attendee).toMatchObject({
+              user_id: expect.any(Number),
+              confirmed: expect.any(Boolean),
+            });
+          });
+        });
+    });
 
-// PATCH - CONFIRM OR UNCONFIRM USER ATTENDANCE BY REHEARSAL ID AND USER ID
+    test("Status 403: Company member who is not the creator cannot view attendance", () => {
+      const token = jwt.sign(
+        { user_id: 2, username: "tom_actor" },
+        process.env.JWT_SECRET,
+      );
+
+      return request(app)
+        .get("/api/productions/1/rehearsals/1/attendance")
+        .set("Authorization", `Bearer ${token}`)
+        .expect(403)
+        .then(({ body }) => {
+          expect(body.msg).toEqual("Forbidden");
+        });
+    });
+
+    test("Status 401: No token provided", () => {
+      return request(app)
+        .get("/api/productions/1/rehearsals/1/attendance")
+        .expect(401)
+        .then(({ body }) => {
+          expect(body.msg).toEqual("No token provided");
+        });
+    });
+
+    test("Status 403: User is neither the creator nor a company member", () => {
+      const token = jwt.sign(
+        { user_id: 99, username: "outsider" },
+        process.env.JWT_SECRET,
+      );
+
+      return request(app)
+        .get("/api/productions/1/rehearsals/1/attendance")
+        .set("Authorization", `Bearer ${token}`)
+        .expect(403)
+        .then(({ body }) => {
+          expect(body.msg).toEqual("Forbidden");
+        });
+    });
+
+    test("Status 403: production_id is not valid", () => {
+      const token = jwt.sign(
+        { user_id: 1, username: "sarah_director" },
+        process.env.JWT_SECRET,
+      );
+
+      return request(app)
+        .get("/api/productions/5/rehearsals/1/attendance")
+        .set("Authorization", `Bearer ${token}`)
+        .expect(403)
+        .then(({ body }) => {
+          expect(body.msg).toEqual("Forbidden");
+        });
+    });
+
+    test("Status 403: rehearsal_id does not exist on this production", () => {
+      const token = jwt.sign(
+        { user_id: 1, username: "sarah_director" },
+        process.env.JWT_SECRET,
+      );
+
+      return request(app)
+        .get("/api/productions/1/rehearsals/999/attendance")
+        .set("Authorization", `Bearer ${token}`)
+        .expect(403)
+        .then(({ body }) => {
+          expect(body.msg).toEqual("Forbidden");
+        });
+    });
+  });
+
+  // POST NEW USER TO REHEARSAL BY ID
+
+  describe("POST /api/productions/:production_id/rehearsals/:rehearsal_id/attendance", () => {
+    test("Status 201: Returns new rehearsal_attendance object", () => {
+      const token = jwt.sign(
+        { user_id: 1, username: "sarah_director" },
+        process.env.JWT_SECRET,
+      );
+
+      return request(app)
+        .post("/api/productions/1/rehearsals/2/attendance")
+        .send({ user_id: 4 })
+        .set("Authorization", `Bearer ${token}`)
+        .expect(201)
+        .then(({ body }) => {
+          expect(body).toMatchObject({
+            rehearsal_id: 2,
+            user_id: 4,
+            confirmed: true,
+          });
+        });
+    });
+
+    test("Status 201: New user_id is added to the rehearsal's called array", () => {
+      const token = jwt.sign(
+        { user_id: 1, username: "sarah_director" },
+        process.env.JWT_SECRET,
+      );
+
+      return request(app)
+        .post("/api/productions/1/rehearsals/2/attendance")
+        .send({ user_id: 4 })
+        .set("Authorization", `Bearer ${token}`)
+        .expect(201)
+        .then(() => {
+          return request(app)
+            .get("/api/productions/1/rehearsals")
+            .set("Authorization", `Bearer ${token}`);
+        })
+        .then(({ body }) => {
+          const rehearsal = body.find((r) => r.id === 2);
+          expect(rehearsal.called).toContain(4);
+        });
+    });
+
+    test("Status 401: No token provided", () => {
+      return request(app)
+        .post("/api/productions/1/rehearsals/2/attendance")
+        .send({ user_id: 4 })
+        .expect(401)
+        .then(({ body }) => {
+          expect(body.msg).toEqual("No token provided");
+        });
+    });
+
+    test("Status 403: User is not the production creator", () => {
+      const token = jwt.sign(
+        { user_id: 2, username: "cast_member_two" },
+        process.env.JWT_SECRET,
+      );
+
+      return request(app)
+        .post("/api/productions/1/rehearsals/2/attendance")
+        .send({ user_id: 4 })
+        .set("Authorization", `Bearer ${token}`)
+        .expect(403)
+        .then(({ body }) => {
+          expect(body.msg).toEqual("Forbidden");
+        });
+    });
+
+    test("Status 403: production_id is not valid", () => {
+      const token = jwt.sign(
+        { user_id: 1, username: "sarah_director" },
+        process.env.JWT_SECRET,
+      );
+
+      return request(app)
+        .post("/api/productions/5/rehearsals/2/attendance")
+        .send({ user_id: 4 })
+        .set("Authorization", `Bearer ${token}`)
+        .expect(403)
+        .then(({ body }) => {
+          expect(body.msg).toEqual("Forbidden");
+        });
+    });
+
+    test("Status 403: rehearsal_id does not exist on this production", () => {
+      const token = jwt.sign(
+        { user_id: 1, username: "sarah_director" },
+        process.env.JWT_SECRET,
+      );
+
+      return request(app)
+        .post("/api/productions/1/rehearsals/999/attendance")
+        .send({ user_id: 4 })
+        .set("Authorization", `Bearer ${token}`)
+        .expect(403)
+        .then(({ body }) => {
+          expect(body.msg).toEqual("Forbidden");
+        });
+    });
+
+    test("Status 400: user_id is missing", () => {
+      const token = jwt.sign(
+        { user_id: 1, username: "sarah_director" },
+        process.env.JWT_SECRET,
+      );
+
+      return request(app)
+        .post("/api/productions/1/rehearsals/2/attendance")
+        .send({})
+        .set("Authorization", `Bearer ${token}`)
+        .expect(400)
+        .then(({ body }) => {
+          expect(body.msg).toEqual("Bad request");
+        });
+    });
+
+    test("Status 400: user_id is not a company member of the production", () => {
+      const token = jwt.sign(
+        { user_id: 1, username: "sarah_director" },
+        process.env.JWT_SECRET,
+      );
+
+      return request(app)
+        .post("/api/productions/1/rehearsals/2/attendance")
+        .send({ user_id: 999 })
+        .set("Authorization", `Bearer ${token}`)
+        .expect(400)
+        .then(({ body }) => {
+          expect(body.msg).toEqual("User is not part of this production");
+        });
+    });
+
+    test("Status 409: user_id is already called to this rehearsal", () => {
+      const token = jwt.sign(
+        { user_id: 1, username: "sarah_director" },
+        process.env.JWT_SECRET,
+      );
+
+      return request(app)
+        .post("/api/productions/1/rehearsals/1/attendance")
+        .send({ user_id: 2 })
+        .set("Authorization", `Bearer ${token}`)
+        .expect(409)
+        .then(({ body }) => {
+          expect(body.msg).toEqual("User is already called to this rehearsal");
+        });
+    });
+  });
+
+  // DELETE USER FROM REHEARSAL BY ID
+
+  describe("DELETE /api/productions/:production_id/rehearsals/:rehearsal_id/attendance/:user_id", () => {
+    test("Status 200: Returns the updated rehearsal with user_id removed from called", () => {
+      const token = jwt.sign(
+        { user_id: 1, username: "sarah_director" },
+        process.env.JWT_SECRET,
+      );
+
+      return request(app)
+        .delete("/api/productions/1/rehearsals/1/attendance/2")
+        .set("Authorization", `Bearer ${token}`)
+        .expect(200)
+        .then(({ body }) => {
+          expect(body.called).not.toContain(2);
+        });
+    });
+
+    test("Status 200: user_id no longer has a rehearsal_attendance row for this rehearsal", () => {
+      const token = jwt.sign(
+        { user_id: 1, username: "sarah_director" },
+        process.env.JWT_SECRET,
+      );
+
+      return request(app)
+        .delete("/api/productions/1/rehearsals/1/attendance/4")
+        .set("Authorization", `Bearer ${token}`)
+        .expect(200)
+        .then(() => {
+          return db.query(
+            `SELECT * FROM rehearsal_attendance WHERE rehearsal_id = $1 AND user_id = $2`,
+            [1, 4],
+          );
+        })
+        .then(({ rows }) => {
+          expect(rows).toHaveLength(0);
+        });
+    });
+
+    test("Status 401: No token provided", () => {
+      return request(app)
+        .delete("/api/productions/1/rehearsals/1/attendance/3")
+        .expect(401)
+        .then(({ body }) => {
+          expect(body.msg).toEqual("No token provided");
+        });
+    });
+
+    test("Status 403: User is not the production creator", () => {
+      const token = jwt.sign(
+        { user_id: 2, username: "cast_member_two" },
+        process.env.JWT_SECRET,
+      );
+
+      return request(app)
+        .delete("/api/productions/1/rehearsals/1/attendance/3")
+        .set("Authorization", `Bearer ${token}`)
+        .expect(403)
+        .then(({ body }) => {
+          expect(body.msg).toEqual("Forbidden");
+        });
+    });
+
+    test("Status 403: production_id is not valid", () => {
+      const token = jwt.sign(
+        { user_id: 1, username: "sarah_director" },
+        process.env.JWT_SECRET,
+      );
+
+      return request(app)
+        .delete("/api/productions/5/rehearsals/1/attendance/3")
+        .set("Authorization", `Bearer ${token}`)
+        .expect(403)
+        .then(({ body }) => {
+          expect(body.msg).toEqual("Forbidden");
+        });
+    });
+
+    test("Status 403: rehearsal_id does not exist on this production", () => {
+      const token = jwt.sign(
+        { user_id: 1, username: "sarah_director" },
+        process.env.JWT_SECRET,
+      );
+
+      return request(app)
+        .delete("/api/productions/1/rehearsals/999/attendance/3")
+        .set("Authorization", `Bearer ${token}`)
+        .expect(403)
+        .then(({ body }) => {
+          expect(body.msg).toEqual("Forbidden");
+        });
+    });
+
+    test("Status 404: user_id has no rehearsal_attendance row for this rehearsal", () => {
+      const token = jwt.sign(
+        { user_id: 1, username: "sarah_director" },
+        process.env.JWT_SECRET,
+      );
+
+      return request(app)
+        .delete("/api/productions/1/rehearsals/1/attendance/99")
+        .set("Authorization", `Bearer ${token}`)
+        .expect(404)
+        .then(({ body }) => {
+          expect(body.msg).toEqual("Not found");
+        });
+    });
+  });
+
+  // PATCH - CONFIRM OR UNCONFIRM USER ATTENDANCE BY REHEARSAL ID AND USER ID
+
+  describe("PATCH /api/productions/:production_id/rehearsals/:rehearsal_id/attendance/:user_id", () => {
+    test("Status 200: Returns updated rehearsal_attendance object with confirmed set to false", () => {
+      const token = jwt.sign(
+        { user_id: 2, username: "tom_actor" },
+        process.env.JWT_SECRET,
+      );
+
+      return request(app)
+        .patch("/api/productions/1/rehearsals/1/attendance/2")
+        .set("Authorization", `Bearer ${token}`)
+        .send({ confirmed: false })
+        .expect(200)
+        .then(({ body }) => {
+          expect(body).toMatchObject({
+            rehearsal_id: 1,
+            user_id: 2,
+            confirmed: false,
+          });
+        });
+    });
+
+    test("Status 200: Returns updated rehearsal_attendance object with confirmed set to true", () => {
+      const token = jwt.sign(
+        { user_id: 3, username: "cast_member_three" },
+        process.env.JWT_SECRET,
+      );
+
+      return request(app)
+        .patch("/api/productions/1/rehearsals/1/attendance/3")
+        .set("Authorization", `Bearer ${token}`)
+        .send({ confirmed: true })
+        .expect(200)
+        .then(({ body }) => {
+          expect(body).toMatchObject({
+            rehearsal_id: 1,
+            user_id: 3,
+            confirmed: true,
+          });
+        });
+    });
+
+    test("Status 401: No token provided", () => {
+      return request(app)
+        .patch("/api/productions/1/rehearsals/1/attendance/2")
+        .send({ confirmed: false })
+        .expect(401)
+        .then(({ body }) => {
+          expect(body.msg).toEqual("No token provided");
+        });
+    });
+
+    test("Status 403: User attempts to confirm attendance on behalf of someone else", () => {
+      const token = jwt.sign(
+        { user_id: 3, username: "cast_member_three" },
+        process.env.JWT_SECRET,
+      );
+
+      return request(app)
+        .patch("/api/productions/1/rehearsals/1/attendance/2")
+        .set("Authorization", `Bearer ${token}`)
+        .send({ confirmed: false })
+        .expect(403)
+        .then(({ body }) => {
+          expect(body.msg).toEqual("Forbidden");
+        });
+    });
+
+    test("Status 404: user_id has no rehearsal_attendance row for this rehearsal", () => {
+      const token = jwt.sign(
+        { user_id: 5, username: "no_attendance_user" },
+        process.env.JWT_SECRET,
+      );
+
+      return request(app)
+        .patch("/api/productions/1/rehearsals/2/attendance/5")
+        .set("Authorization", `Bearer ${token}`)
+        .send({ confirmed: false })
+        .expect(404)
+        .then(({ body }) => {
+          expect(body.msg).toEqual("Not found");
+        });
+    });
+
+    test("Status 400: confirmed is not a boolean", () => {
+      const token = jwt.sign(
+        { user_id: 2, username: "tom_actor" },
+        process.env.JWT_SECRET,
+      );
+
+      return request(app)
+        .patch("/api/productions/1/rehearsals/1/attendance/2")
+        .set("Authorization", `Bearer ${token}`)
+        .send({ confirmed: "yes" })
+        .expect(400)
+        .then(({ body }) => {
+          expect(body.msg).toEqual("Bad request");
+        });
+    });
+
+    test("Status 400: confirmed is missing", () => {
+      const token = jwt.sign(
+        { user_id: 2, username: "tom_actor" },
+        process.env.JWT_SECRET,
+      );
+
+      return request(app)
+        .patch("/api/productions/1/rehearsals/1/attendance/2")
+        .set("Authorization", `Bearer ${token}`)
+        .send({})
+        .expect(400)
+        .then(({ body }) => {
+          expect(body.msg).toEqual("Bad request");
+        });
+    });
+  });
+});

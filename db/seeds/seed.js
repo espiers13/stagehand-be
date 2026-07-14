@@ -61,7 +61,7 @@ called INT[] DEFAULT '{}');`);
   id SERIAL PRIMARY KEY,
   rehearsal_id INT REFERENCES rehearsals(id) ON DELETE CASCADE,
   user_id INT REFERENCES users(id) ON DELETE CASCADE,
-  confirmed BOOLEAN DEFAULT false,
+  confirmed BOOLEAN DEFAULT true,
   UNIQUE(rehearsal_id, user_id));`);
     })
     .then(() => {
