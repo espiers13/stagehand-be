@@ -1,262 +1,298 @@
-# Stage Hand BE
+<h1>Stage Hand BE</h1>
 
-> ⚠️ **Work in Progress** — this project is currently in active development. Endpoints and data models may change.
+<blockquote>⚠️ <strong>Work in Progress</strong> — this project is currently in active development. Endpoints and data models may change.</blockquote>
 
-A RESTful API for the Stage Hand rehearsal scheduling app, built with Node.js, Express, and PostgreSQL. Allows theatre companies to create productions, manage company members, schedule rehearsals, and track attendance.
+<p>A RESTful API for the Stage Hand rehearsal scheduling app, built with Node.js, Express, and PostgreSQL. Allows theatre companies to create productions, manage company members, schedule rehearsals, and track attendance.</p>
 
-## Getting Started
+<h2>Getting Started</h2>
 
-### Prerequisites
+<h3>Prerequisites</h3>
+<ul>
+  <li>Node.js v18+</li>
+  <li>PostgreSQL</li>
+</ul>
 
-- Node.js v18+
-- PostgreSQL
+<h3>Installation</h3>
 
-### Installation
+<ol>
+  <li>
+    <p>Clone the repo:</p>
+    <pre><code>git clone https://github.com/espiers13/stagehand-be.git
+cd stagehand-be</code></pre>
+  </li>
+  <li>
+    <p>Install dependencies:</p>
+    <pre><code>npm install</code></pre>
+  </li>
+  <li>
+    <p>Create the following environment files in the root directory:</p>
+    <p><strong>.env</strong></p>
+    <pre><code>PGDATABASE=stagehand
+JWT_SECRET=your_jwt_secret</code></pre>
+    <p><strong>.env.test</strong></p>
+    <pre><code>PGDATABASE=stagehand_test
+JWT_SECRET=your_jwt_secret</code></pre>
+  </li>
+  <li>
+    <p>Set up the databases:</p>
+    <pre><code>psql postgres -c "CREATE DATABASE stagehand;"
+psql postgres -c "CREATE DATABASE stagehand_test;"</code></pre>
+  </li>
+  <li>
+    <p>Seed the development database:</p>
+    <pre><code>npm run seed</code></pre>
+  </li>
+</ol>
 
-1. Clone the repo:
+<h2>Running Tests</h2>
 
-```bash
-git clone https://github.com/espiers13/stagehand-be.git
-cd stagehand-be
-```
+<pre><code>npm test</code></pre>
 
-2. Install dependencies:
+<p>Tests use a separate test database that is re-seeded before each test.</p>
 
-```bash
-npm install
-```
+<h2>API Endpoints</h2>
 
-3. Create the following environment files in the root directory:
+<h3>Auth &amp; User</h3>
 
-**.env**
+<table>
+  <thead>
+    <tr><th>Method</th><th>Endpoint</th><th>Description</th><th>Auth Required</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>POST</td><td><code>/api/login</code></td><td>Authenticate user, returns JWT token</td><td>No</td></tr>
+    <tr><td>POST</td><td><code>/api/register</code></td><td>Create a new user</td><td>No</td></tr>
+    <tr><td>GET</td><td><code>/api/user</code></td><td>Get the logged-in user's details</td><td>Yes</td></tr>
+    <tr><td>GET</td><td><code>/api/user/productions</code></td><td>Get all productions for the logged-in user</td><td>Yes</td></tr>
+    <tr><td>PATCH</td><td><code>/api/user/password</code></td><td>Change password while logged in</td><td>Yes</td></tr>
+    <tr><td>DELETE</td><td><code>/api/user</code></td><td>Delete the logged-in user's account</td><td>Yes</td></tr>
+    <tr><td>POST</td><td><code>/api/forgot-password</code></td><td>Request a password reset email</td><td>No</td></tr>
+    <tr><td>POST</td><td><code>/api/reset-password</code></td><td>Reset password using a reset token</td><td>No</td></tr>
+  </tbody>
+</table>
 
-```
-PGDATABASE=stagehand
-JWT_SECRET=your_jwt_secret
-```
+<h3>Productions</h3>
 
-**.env.test**
+<table>
+  <thead>
+    <tr><th>Method</th><th>Endpoint</th><th>Description</th><th>Auth Required</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>POST</td><td><code>/api/productions</code></td><td>Create a new production</td><td>Yes</td></tr>
+    <tr><td>GET</td><td><code>/api/productions/:production_id</code></td><td>Get a production by ID</td><td>Yes</td></tr>
+    <tr><td>PATCH</td><td><code>/api/productions/:production_id</code></td><td>Edit production details</td><td>Yes</td></tr>
+    <tr><td>DELETE</td><td><code>/api/productions/:production_id</code></td><td>Delete a production</td><td>Yes</td></tr>
+  </tbody>
+</table>
 
-```
-PGDATABASE=stagehand_test
-JWT_SECRET=your_jwt_secret
-```
+<h3>Company Members</h3>
 
-4. Set up the databases:
+<table>
+  <thead>
+    <tr><th>Method</th><th>Endpoint</th><th>Description</th><th>Auth Required</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>GET</td><td><code>/api/productions/:production_id/members</code></td><td>Get all company members for a production</td><td>Yes</td></tr>
+    <tr><td>POST</td><td><code>/api/productions/:production_id/members</code></td><td>Add a company member</td><td>Yes</td></tr>
+    <tr><td>DELETE</td><td><code>/api/productions/:production_id/:member_id</code></td><td>Remove a company member</td><td>Yes</td></tr>
+  </tbody>
+</table>
 
-```bash
-psql postgres -c "CREATE DATABASE stagehand;"
-psql postgres -c "CREATE DATABASE stagehand_test;"
-```
+<h3>Rehearsals</h3>
 
-5. Seed the development database:
+<table>
+  <thead>
+    <tr><th>Method</th><th>Endpoint</th><th>Description</th><th>Auth Required</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>GET</td><td><code>/api/productions/:production_id/rehearsals</code></td><td>Get all rehearsals for a production</td><td>Yes</td></tr>
+    <tr><td>POST</td><td><code>/api/productions/:production_id/rehearsals</code></td><td>Add a rehearsal to a production (defaults <code>called</code> to the full company if omitted)</td><td>Yes</td></tr>
+    <tr><td>PATCH</td><td><code>/api/productions/:production_id/rehearsals/:rehearsal_id</code></td><td>Edit rehearsal details</td><td>Yes</td></tr>
+    <tr><td>DELETE</td><td><code>/api/productions/:production_id/rehearsals/:rehearsal_id</code></td><td>Delete a rehearsal</td><td>Yes</td></tr>
+    <tr><td>GET</td><td><code>/api/users/me/schedule</code></td><td>Get all rehearsals the logged-in user is called to</td><td>Yes</td></tr>
+  </tbody>
+</table>
 
-```bash
-npm run seed
-```
+<h3>Rehearsal Attendance</h3>
 
-## Running Tests
+<table>
+  <thead>
+    <tr><th>Method</th><th>Endpoint</th><th>Description</th><th>Auth Required</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>GET</td><td><code>/api/productions/:production_id/rehearsals/:rehearsal_id/attendance</code></td><td>Get all attendance records for a rehearsal</td><td>Yes (production creator)</td></tr>
+    <tr><td>POST</td><td><code>/api/productions/:production_id/rehearsals/:rehearsal_id/attendance</code></td><td>Add a company member to a rehearsal's call</td><td>Yes (production creator)</td></tr>
+    <tr><td>DELETE</td><td><code>/api/productions/:production_id/rehearsals/:rehearsal_id/attendance/:user_id</code></td><td>Remove a company member from a rehearsal's call</td><td>Yes (production creator)</td></tr>
+    <tr><td>PATCH</td><td><code>/api/productions/:production_id/rehearsals/:rehearsal_id/attendance/:user_id</code></td><td>Confirm or unconfirm your own attendance</td><td>Yes (self only)</td></tr>
+  </tbody>
+</table>
 
-```bash
-npm test
-```
+<h3>Authentication</h3>
 
-Tests use a separate test database that is re-seeded before each test.
+<p>Protected routes require a Bearer token in the request header:</p>
 
-## API Endpoints
+<pre><code>Authorization: Bearer &lt;token&gt;</code></pre>
 
-### Auth
+<h2>Request &amp; Response Examples</h2>
 
-| Method | Endpoint        | Description                          | Auth Required |
-| ------ | --------------- | ------------------------------------ | ------------- |
-| POST   | `/api/login`    | Authenticate user, returns JWT token | No            |
-| POST   | `/api/register` | Create a new user                    | No            |
+<h3>POST /api/login</h3>
 
-### Productions
-
-| Method | Endpoint                          | Description                                | Auth Required |
-| ------ | --------------------------------- | ------------------------------------------ | ------------- |
-| GET    | `/api/productions`                | Get all productions for authenticated user | Yes           |
-| POST   | `/api/productions`                | Create a new production                    | Yes           |
-| GET    | `/api/productions/:production_id` | Get a production by ID                     | Yes           |
-| PATCH  | `/api/productions/:production_id` | Edit production details                    | Yes           |
-| DELETE | `/api/productions/:production_id` | Delete a production                        | Yes           |
-
-### Company Members
-
-| Method | Endpoint                                  | Description                              | Auth Required |
-| ------ | ----------------------------------------- | ---------------------------------------- | ------------- |
-| GET    | `/api/productions/:production_id/company` | Get all company members for a production | Yes           |
-| POST   | `/api/productions/:production_id/company` | Add a company member by email            | Yes           |
-| DELETE | `/api/company/:member_id`                 | Remove a company member                  | Yes           |
-
-### Rehearsals
-
-| Method | Endpoint                                     | Description                         | Auth Required |
-| ------ | -------------------------------------------- | ----------------------------------- | ------------- |
-| GET    | `/api/productions/:production_id/rehearsals` | Get all rehearsals for a production | Yes           |
-| POST   | `/api/productions/:production_id/rehearsals` | Add a rehearsal to a production     | Yes           |
-| PATCH  | `/api/rehearsals/:rehearsal_id`              | Edit rehearsal details              | Yes           |
-| DELETE | `/api/rehearsals/:rehearsal_id`              | Delete a rehearsal                  | Yes           |
-| GET    | `/api/users/:user_id/rehearsals`             | Get all rehearsals for a user       | Yes           |
-
-### Calls
-
-| Method | Endpoint                                       | Description                         | Auth Required |
-| ------ | ---------------------------------------------- | ----------------------------------- | ------------- |
-| GET    | `/api/rehearsals/:rehearsal_id/calls`          | Get all calls for a rehearsal       | Yes           |
-| POST   | `/api/rehearsals/:rehearsal_id/calls`          | Add a user to a rehearsal call      | Yes           |
-| DELETE | `/api/rehearsals/:rehearsal_id/calls/:user_id` | Remove a user from a rehearsal call | Yes           |
-| PATCH  | `/api/rehearsals/:rehearsal_id/calls/:user_id` | Confirm or unconfirm attendance     | Yes           |
-
-### Authentication
-
-Protected routes require a Bearer token in the request header:
-
-```
-Authorization: Bearer <token>
-```
-
-## Request & Response Examples
-
-### POST /api/login
-
-**Request body:**
-
-```json
-{
+<p><strong>Request body:</strong></p>
+<pre><code>{
   "email": "your@email.com",
   "password": "your_password"
-}
-```
+}</code></pre>
 
-**Response:**
-
-```json
-{
+<p><strong>Response:</strong></p>
+<pre><code>{
   "user": {
     "id": 1,
     "username": "sarah_director",
     "email": "your@email.com"
   },
   "token": "eyJhbGci..."
-}
-```
+}</code></pre>
 
-### POST /api/register
+<h3>POST /api/register</h3>
 
-**Request body:**
-
-```json
-{
+<p><strong>Request body:</strong></p>
+<pre><code>{
   "username": "your_username",
   "email": "your@email.com",
   "password": "your_password"
-}
-```
+}</code></pre>
 
-**Response:**
-
-```json
-{
+<p><strong>Response:</strong></p>
+<pre><code>{
   "user": {
     "id": 1,
     "username": "your_username",
     "email": "your@email.com"
   },
   "token": "eyJhbGci..."
-}
-```
+}</code></pre>
 
-### POST /api/productions
+<h3>POST /api/productions</h3>
 
-**Request body:**
-
-```json
-{
+<p><strong>Request body:</strong></p>
+<pre><code>{
   "title": "A Midsummer Night's Dream",
   "venue": "The Lowry Studio, Salford",
   "start_date": "2026-09-01",
   "end_date": "2026-09-14"
-}
-```
+}</code></pre>
 
-**Response:**
+<p><strong>Response:</strong></p>
+<pre><code>{
+  "id": 1,
+  "title": "A Midsummer Night's Dream",
+  "created_by": 1,
+  "venue": "The Lowry Studio, Salford",
+  "start_date": "2026-09-01",
+  "end_date": "2026-09-14"
+}</code></pre>
 
-```json
-{
-  "production": {
-    "id": 1,
-    "title": "A Midsummer Night's Dream",
-    "created_by": 1,
-    "venue": "The Lowry Studio, Salford",
-    "start_date": "2026-09-01",
-    "end_date": "2026-09-14"
-  }
-}
-```
+<h3>POST /api/productions/:production_id/rehearsals</h3>
 
-### PATCH /api/rehearsals/:rehearsal_id/calls/:user_id
+<p><strong>Request body:</strong></p>
+<pre><code>{
+  "date": "2026-08-08",
+  "start_time": "10:00",
+  "end_time": "17:00",
+  "location": "Studio 6, Manchester",
+  "notes": "Full run",
+  "called": [2, 3, 4]
+}</code></pre>
 
-**Request body:**
+<p><strong>Response:</strong></p>
+<pre><code>{
+  "id": 5,
+  "production_id": 1,
+  "date": "2026-08-07T23:00:00.000Z",
+  "start_time": "10:00:00",
+  "end_time": "17:00:00",
+  "location": "Studio 6, Manchester",
+  "notes": "Full run",
+  "scenes": [],
+  "called": [2, 3, 4]
+}</code></pre>
 
-```json
-{
+<p><em>If <code>called</code> is omitted, it defaults to every company member on the production.</em></p>
+
+<h3>POST /api/productions/:production_id/rehearsals/:rehearsal_id/attendance</h3>
+
+<p><strong>Request body:</strong></p>
+<pre><code>{
+  "user_id": 4
+}</code></pre>
+
+<p><strong>Response:</strong></p>
+<pre><code>{
+  "rehearsal_id": 2,
+  "user_id": 4,
   "confirmed": true
-}
-```
+}</code></pre>
 
-**Response:**
+<h3>PATCH /api/productions/:production_id/rehearsals/:rehearsal_id/attendance/:user_id</h3>
 
-```json
-{
-  "attendance": {
-    "rehearsal_id": 1,
-    "user_id": 2,
-    "confirmed": true
-  }
-}
-```
+<p><strong>Request body:</strong></p>
+<pre><code>{
+  "confirmed": true
+}</code></pre>
 
-## Tech Stack
+<p><strong>Response:</strong></p>
+<pre><code>{
+  "rehearsal_id": 1,
+  "user_id": 2,
+  "confirmed": true
+}</code></pre>
 
-- **Node.js** & **Express** — server and routing
-- **PostgreSQL** & **node-postgres (pg)** — database
-- **bcrypt** — password hashing
-- **jsonwebtoken** — authentication
-- **pg-format** — safe SQL query formatting
-- **dotenv** — environment variable management
-- **Jest**, **jest-sorted** & **Supertest** — testing
+<h2>Tech Stack</h2>
 
-## Scripts
+<ul>
+  <li><strong>Node.js</strong> &amp; <strong>Express</strong> — server and routing</li>
+  <li><strong>PostgreSQL</strong> &amp; <strong>node-postgres (pg)</strong> — database</li>
+  <li><strong>bcrypt</strong> — password hashing</li>
+  <li><strong>jsonwebtoken</strong> — authentication</li>
+  <li><strong>pg-format</strong> — safe SQL query formatting</li>
+  <li><strong>resend</strong> &amp; <strong>mailgun.js</strong> — transactional email</li>
+  <li><strong>dotenv</strong> — environment variable management</li>
+  <li><strong>Jest</strong>, <strong>jest-sorted</strong> &amp; <strong>Supertest</strong> — testing</li>
+</ul>
 
-| Script | Command          | Description                   |
-| ------ | ---------------- | ----------------------------- |
-| Start  | `node listen.js` | Start the server              |
-| Dev    | `npm run dev`    | Start with nodemon            |
-| Seed   | `npm run seed`   | Seed the development database |
-| Test   | `npm test`       | Run the test suite            |
+<h2>Scripts</h2>
 
-## Project Structure
+<table>
+  <thead>
+    <tr><th>Script</th><th>Command</th><th>Description</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Start</td><td><code>npm start</code></td><td>Start the server</td></tr>
+    <tr><td>Dev</td><td><code>npm run dev</code></td><td>Start with nodemon</td></tr>
+    <tr><td>Seed</td><td><code>npm run seed</code></td><td>Seed the development database</td></tr>
+    <tr><td>Test</td><td><code>npm test</code></td><td>Run the test suite</td></tr>
+  </tbody>
+</table>
 
-```
-.
-├── app.js                          # Express app: middleware and route definitions
-├── listen.js                       # Starts the server
+<h2>Project Structure</h2>
+
+<pre><code>.
+├── app.js                                  # Express app: middleware and route definitions
+├── listen.js                               # Starts the server
 ├── db/
-│   ├── connection.js               # Database connection
+│   ├── connection.js                       # Database connection
 │   ├── controllers/
-│   │   └── user-controllers.js     # Auth controllers
-│   ├── models/
-│   │   └── user-models.js          # Database queries
+│   │   ├── user-controllers.js             # Auth and user account controllers
+│   │   ├── production-controllers.js       # Production controllers
+│   │   ├── company-member-controllers.js   # Company member controllers
+│   │   └── rehearsal-controllers.js        # Rehearsal and attendance controllers
+│   ├── models/                             # Database queries
 │   ├── middleware/
-│   │   └── auth.js                 # JWT verification for protected routes
-│   ├── data/                       # Seed data
-│   └── seeds/                      # Seeding scripts
+│   │   └── auth.js                         # JWT verification for protected routes
+│   ├── seeds/                              # Seed data and seeding scripts
+│   └── utils/                              # Mailer and other utilities
 └── __tests__/
-    └── app.test.js                 # Endpoint tests (Jest + Supertest)
-```
+    └── app.test.js                         # Endpoint tests (Jest + Supertest)</code></pre>
 
-## Frontend
+<h2>Frontend</h2>
 
-The frontend for this project can be found at: https://github.com/espiers13/stage-hand-app
+<p>The frontend for this project can be found at: <a href="https://github.com/espiers13/stage-hand-app">https://github.com/espiers13/stage-hand-app</a></p>
