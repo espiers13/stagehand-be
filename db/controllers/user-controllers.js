@@ -11,6 +11,7 @@ const {
   fetchProductionData,
   patchProductionData,
   removeProduction,
+  fetchUsernameById,
 } = require("../models/user-models.js");
 
 const { sendPasswordResetEmail } = require("../utils/mailer.js");
@@ -39,6 +40,23 @@ exports.registerUser = (req, res, next) => {
     });
 };
 
+exports.getUsernameById = (req, res, next) => {
+  const { id } = req.params;
+  fetchUserById(id)
+    .then((user) => {
+      if (!user) {
+        res.status(404).send({ msg: "User not found" });
+      }
+      res.status(200).send({ username: user.username });
+    })
+    .catch((err) => {
+      if (err.code === "22P02") {
+        res.status(400).send({ msg: "Bad request" });
+      }
+      next(err);
+    });
+};
+
 exports.getLoggedInUser = (req, res, next) => {
   const userId = req.user.user_id;
 
@@ -53,6 +71,8 @@ exports.getLoggedInUser = (req, res, next) => {
 
 exports.getUserProductions = (req, res, next) => {
   const userId = req.user.user_id;
+
+  console.log(userId);
 
   fetchUserProductions(userId)
     .then((productions) => {

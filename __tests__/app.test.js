@@ -137,6 +137,38 @@ describe("AUTH USER ROUTES", () => {
     });
   });
 
+  // GET USERNAME BY ID
+
+  describe("GET /api/username/:id", () => {
+    test("200: responds with the username for a valid user id", () => {
+      return request(app)
+        .get("/api/username/1")
+        .expect(200)
+        .then(({ body }) => {
+          expect(body).toHaveProperty("username");
+          expect(typeof body.username).toBe("string");
+        });
+    });
+
+    test("404: responds with an error when the id does not exist", () => {
+      return request(app)
+        .get("/api/username/999")
+        .expect(404)
+        .then(({ body }) => {
+          expect(body.msg).toBe("User not found");
+        });
+    });
+
+    test("400: responds with an error when the id is not a valid number", () => {
+      return request(app)
+        .get("/api/username/notanid")
+        .expect(400)
+        .then(({ body }) => {
+          expect(body.msg).toBe("Bad request");
+        });
+    });
+  });
+
   // GET LOGGED IN USER INFO
 
   describe("GET /api/user", () => {

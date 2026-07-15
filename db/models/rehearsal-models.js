@@ -185,7 +185,6 @@ exports.fetchSchedule = (userId) => {
       [userId],
     )
     .then(({ rows }) => {
-      console.log("rows returned:", rows.length, rows);
       return rows;
     });
 };
@@ -304,7 +303,6 @@ exports.updateAttendance = (userId, rehearsalId, productionId, confirmed) => {
       [confirmed, userId, rehearsalId],
     )
     .then(({ rows }) => {
-      console.log(rows);
       if (rows.length === 0) {
         return Promise.reject({ status: 404, msg: "Not found" });
       }

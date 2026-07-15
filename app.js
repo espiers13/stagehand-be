@@ -7,6 +7,7 @@ const verifyToken = require("./db/middleware/auth.js");
 const {
   loginUser,
   registerUser,
+  getUsernameById,
   getLoggedInUser,
   getUserProductions,
   changePassword,
@@ -54,6 +55,10 @@ app.post("/api/login", loginUser);
 // POST NEW USER
 
 app.post("/api/register", registerUser);
+
+// GET USERNAME BY ID
+
+app.get("/api/username/:id", getUsernameById);
 
 // GET LOGGED IN USER BY ID
 
