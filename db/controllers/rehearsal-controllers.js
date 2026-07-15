@@ -84,6 +84,8 @@ exports.deleteRehearsal = (req, res, next) => {
 
 exports.getUserSchedule = (req, res, next) => {
   const userId = req.user.user_id;
+  console.log("req.user:", req.user);
+  console.log("userId:", userId);
 
   fetchSchedule(userId)
     .then((data) => {
@@ -93,7 +95,6 @@ exports.getUserSchedule = (req, res, next) => {
       next(err);
     });
 };
-
 exports.getAllCalls = (req, res, next) => {
   const userId = req.user.user_id;
   const rehearsalId = req.params.rehearsal_id;
