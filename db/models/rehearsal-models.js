@@ -185,6 +185,7 @@ exports.fetchSchedule = (userId) => {
       [userId],
     )
     .then(({ rows }) => {
+      console.log("rows returned:", rows.length, rows);
       return rows;
     });
 };
