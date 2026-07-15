@@ -27,19 +27,21 @@ exports.patchProductionData = (newData, production_id, user_id) => {
     .map((field, index) => `${field} = $${index + 1}`)
     .join(", ");
 
-  const queryString = `UPDATE productions SET ${setClause} WHERE id = ${production_id} AND created_by = ${user_id} RETURNING id, title, created_by, venue, 
- TO_CHAR(start_date, 'YYYY-MM-DD') as start_date,
- TO_CHAR(end_date, 'YYYY-MM-DD') as end_date;`;
+  const queryString = `UPDATE productions SET ${setClause} WHERE id = $${
+    updatedFields.length + 1
+  } AND created_by = $${updatedFields.length + 2} RETURNING *;`;
 
-  return db.query(queryString, updatedValues).then(({ rows }) => {
-    if (rows.length === 0) {
-      return Promise.reject({
-        status: 403,
-        msg: "Forbidden",
-      });
-    }
-    return rows[0];
-  });
+  return db
+    .query(queryString, [...updatedValues, production_id, user_id])
+    .then(({ rows }) => {
+      if (rows.length === 0) {
+        return Promise.reject({
+          status: 403,
+          msg: "Forbidden",
+        });
+      }
+      return rows[0];
+    });
 };
 
 exports.removeProduction = (user_id, production_id) => {
@@ -57,13 +59,13 @@ exports.removeProduction = (user_id, production_id) => {
 };
 
 exports.createNewProduction = (production, userId) => {
-  const { title, venue, start_date, end_date } = production;
+  const { title, venue, production_dates, scenes } = production;
 
   return db
     .query(
-      `
-    INSERT INTO productions (title, venue, start_date, end_date, created_by) VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [title, venue, start_date, end_date, userId],
+      `INSERT INTO productions (title, venue, production_dates, scenes, created_by)
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [title, venue, production_dates, scenes ?? 0, userId],
     )
     .then(({ rows }) => {
       return rows[0];

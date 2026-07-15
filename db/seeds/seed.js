@@ -27,13 +27,14 @@ const seed = ({
     })
     .then(() => {
       return db.query(`
-        CREATE TABLE productions(
-        id SERIAL PRIMARY KEY,
-        title VARCHAR(255) NOT NULL,
-        created_by INT REFERENCES users(id) ON DELETE CASCADE,
-        venue VARCHAR(255) NOT NULL,
-        start_date DATE NOT NULL,
-        end_date DATE NOT NULL);`);
+ CREATE TABLE productions(
+id SERIAL PRIMARY KEY,
+title VARCHAR(255) NOT NULL,
+created_by INT REFERENCES users(id) ON DELETE CASCADE,
+venue VARCHAR(255) NOT NULL,
+production_dates DATE[] NOT NULL,
+scenes INT NOT NULL)
+        ;`);
     })
     .then(() => {
       return db.query(`
@@ -90,14 +91,14 @@ called INT[] DEFAULT '{}');`);
     })
     .then(() => {
       const insertProductionsString = format(
-        "INSERT INTO productions (title, created_by, venue, start_date, end_date) VALUES %L RETURNING *;",
+        "INSERT INTO productions (title, created_by, venue, production_dates, scenes) VALUES %L RETURNING *;",
         productionsData.map(
-          ({ title, created_by, venue, start_date, end_date }) => [
+          ({ title, created_by, venue, production_dates, scenes }) => [
             title,
             created_by,
             venue,
-            start_date,
-            end_date,
+            `{${production_dates.join(",")}}`,
+            scenes,
           ],
         ),
       );

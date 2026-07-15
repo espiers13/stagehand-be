@@ -505,8 +505,12 @@ describe("PRODUCTION ROUTES", () => {
       const newProduction = {
         title: "Nuns of Fury",
         venue: "Edinburgh Fringe",
-        start_date: "2026-08-01",
-        end_date: "2026-08-24",
+        production_dates: [
+          "2026-08-01",
+          "2026-08-02",
+          "2026-08-03",
+          "2026-08-04",
+        ],
       };
 
       return request(app)
@@ -520,9 +524,9 @@ describe("PRODUCTION ROUTES", () => {
             title: "Nuns of Fury",
             created_by: 1,
             venue: "Edinburgh Fringe",
-            start_date: "2026-07-31T23:00:00.000Z",
-            end_date: "2026-08-23T23:00:00.000Z",
+            production_dates: expect.any(Array),
           });
+          expect(body.production_dates).toHaveLength(4);
         });
     });
   });
@@ -624,8 +628,7 @@ describe("PRODUCTION ROUTES", () => {
             {
               title: "A Midsummer Night's Dream",
               venue: "The Lowry Studio, Salford",
-              start_date: "2026-08-31T23:00:00.000Z",
-              end_date: "2026-09-13T23:00:00.000Z",
+              production_dates: expect.any(Array),
             },
           ]);
         });
@@ -645,8 +648,7 @@ describe("PRODUCTION ROUTES", () => {
             {
               title: "A Midsummer Night's Dream",
               venue: "The Lowry Studio, Salford",
-              start_date: "2026-08-31T23:00:00.000Z",
-              end_date: "2026-09-13T23:00:00.000Z",
+              production_dates: expect.any(Array),
             },
           ]);
         });
@@ -694,7 +696,7 @@ describe("PRODUCTION ROUTES", () => {
         });
     });
 
-    test("Status 200: successfully updates dates", () => {
+    test("Status 200: successfully updates production_dates", () => {
       const token = jwt.sign(
         { user_id: 1, username: "sarah_director" },
         process.env.JWT_SECRET,
@@ -702,15 +704,17 @@ describe("PRODUCTION ROUTES", () => {
 
       return request(app)
         .patch("/api/productions/1")
-        .send({ start_date: "2026-10-01", end_date: "2026-10-14" })
+        .send({
+          production_dates: ["2026-10-01", "2026-10-02", "2026-10-03"],
+        })
         .set("Authorization", `Bearer ${token}`)
         .expect(200)
         .then(({ body }) => {
           expect(body).toMatchObject({
             id: 1,
-            start_date: "2026-10-01",
-            end_date: "2026-10-14",
+            production_dates: expect.any(Array),
           });
+          expect(body.production_dates).toHaveLength(3);
         });
     });
 

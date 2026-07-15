@@ -87,7 +87,7 @@ exports.fetchUserById = (userId) => {
 exports.fetchUserProductions = (userId) => {
   return db
     .query(
-      `SELECT DISTINCT productions.title, productions.venue, productions.start_date, productions.end_date, productions.id
+      `SELECT DISTINCT productions.title, productions.venue, productions.production_dates, productions.id
        FROM productions
        LEFT JOIN company_members ON company_members.production_id = productions.id
        WHERE productions.created_by = $1
