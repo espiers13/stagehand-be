@@ -45,3 +45,21 @@ exports.deleteCompanyMember = (req, res, next) => {
       next(err);
     });
 };
+
+exports.patchCompanyMemberAdmin = (req, res, next) => {
+  const { production_id, member_id } = req.params;
+  const { admin } = req.body;
+  const userId = req.user.user_id;
+
+  if (typeof admin !== "boolean") {
+    return next({ status: 400, msg: "Bad request" });
+  }
+
+  updateCompanyMemberAdmin(production_id, member_id, userId, admin)
+    .then((updatedMember) => {
+      res.status(200).send(updatedMember);
+    })
+    .catch((err) => {
+      next(err);
+    });
+};

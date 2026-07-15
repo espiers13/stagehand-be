@@ -39,10 +39,11 @@ scenes INT NOT NULL)
     .then(() => {
       return db.query(`
         CREATE TABLE company_members(
-        id SERIAL PRIMARY KEY,
-        production_id INT REFERENCES productions(id) ON DELETE CASCADE,
-        user_id INT REFERENCES users(id) ON DELETE CASCADE,
-        role VARCHAR(255) NOT NULL);`);
+id SERIAL PRIMARY KEY,
+production_id INT REFERENCES productions(id) ON DELETE CASCADE,
+user_id INT REFERENCES users(id) ON DELETE CASCADE,
+role VARCHAR(255) NOT NULL,
+admin BOOLEAN DEFAULT false);`);
     })
     .then(() => {
       return db.query(`
@@ -106,11 +107,12 @@ called INT[] DEFAULT '{}');`);
     })
     .then(() => {
       const insertCompanyMembersString = format(
-        "INSERT INTO company_members (production_id, user_id, role) VALUES %L RETURNING *;",
-        companyMembersData.map(({ production_id, user_id, role }) => [
+        "INSERT INTO company_members (production_id, user_id, role, admin) VALUES %L RETURNING *;",
+        companyMembersData.map(({ production_id, user_id, role, admin }) => [
           production_id,
           user_id,
           role,
+          admin ?? false,
         ]),
       );
       return db.query(insertCompanyMembersString);

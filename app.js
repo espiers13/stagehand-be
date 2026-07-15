@@ -27,6 +27,7 @@ const {
   getMembersByProduction,
   postNewCompanyMember,
   deleteCompanyMember,
+  patchCompanyMemberAdmin,
 } = require("./db/controllers/company-member-controllers.js");
 
 const {
@@ -126,6 +127,14 @@ app.delete(
   "/api/productions/:production_id/:member_id",
   verifyToken,
   deleteCompanyMember,
+);
+
+// PATCH COMPANY MEMBER ADMIN
+
+app.patch(
+  "/api/productions/:production_id/members/:member_id/admin",
+  verifyToken,
+  patchCompanyMemberAdmin,
 );
 
 // ** REHEARSAL ROUTES **
