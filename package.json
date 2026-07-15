@@ -5,7 +5,7 @@
   "scripts": {
     "start": "node listen.js",
     "dev": "nodemon listen.js",
-    "seed": "node db/seeds/seed.js",
+    "seed": "node db/seeds/run-seed.js",
     "test": "jest"
   },
   "jest": {
