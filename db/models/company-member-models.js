@@ -17,7 +17,7 @@ const saltRounds = 10;
 exports.fetchMembersByProduction = (production_id, userId) => {
   return db
     .query(
-      `SELECT company_members.user_id, users.username, company_members.role
+      `SELECT company_members.user_id, users.username, company_members.role, company_members.admin
        FROM company_members
        JOIN users ON users.id = company_members.user_id
        WHERE company_members.production_id = $1`,
