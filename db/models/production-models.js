@@ -52,7 +52,14 @@ exports.removeProduction = (user_id, production_id) => {
 };
 
 exports.createNewProduction = (production, userId) => {
-  const { title, venue, production_dates, scenes } = production;
+  const {
+    title,
+    venue,
+    production_dates,
+    scenes,
+    director_email,
+    director_username,
+  } = production;
 
   return db
     .query(
@@ -61,11 +68,47 @@ exports.createNewProduction = (production, userId) => {
       [title, venue, production_dates, scenes ?? 0, userId],
     )
     .then(({ rows: [newProduction] }) => {
-      return db
-        .query(
+      // No director specified — creator becomes Director + admin (existing behavior)
+      if (!director_email && !director_username) {
+        return db
+          .query(
+            `INSERT INTO company_members (production_id, user_id, role, admin) VALUES ($1, $2, $3, $4)`,
+            [newProduction.id, userId, "Director", true],
+          )
+          .then(() => newProduction);
+      }
+
+      // Director specified — look them up by email or username
+      const lookupQuery = director_email
+        ? `SELECT id FROM users WHERE email = $1`
+        : `SELECT id FROM users WHERE username = $1`;
+      const lookupValue = director_email ?? director_username;
+
+      return db.query(lookupQuery, [lookupValue]).then(({ rows }) => {
+        if (rows.length === 0) {
+          return Promise.reject({ status: 404, msg: "Director not found" });
+        }
+
+        const directorId = rows[0].id;
+
+        const insertDirector = db.query(
           `INSERT INTO company_members (production_id, user_id, role, admin) VALUES ($1, $2, $3, $4)`,
-          [newProduction.id, userId, "Director", true],
-        )
-        .then(() => newProduction);
+          [newProduction.id, directorId, "Director", true],
+        );
+
+        // Creator is also always an admin — but skip a duplicate insert
+        // if the creator IS the specified director
+        const insertCreator =
+          directorId === userId
+            ? Promise.resolve()
+            : db.query(
+                `INSERT INTO company_members (production_id, user_id, role, admin) VALUES ($1, $2, $3, $4)`,
+                [newProduction.id, userId, "Producer", true],
+              );
+
+        return Promise.all([insertDirector, insertCreator]).then(
+          () => newProduction,
+        );
+      });
     });
 };
