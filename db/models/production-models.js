@@ -68,7 +68,6 @@ exports.createNewProduction = (production, userId) => {
       [title, venue, production_dates, scenes ?? 0, userId],
     )
     .then(({ rows: [newProduction] }) => {
-      // No director specified — creator becomes Director + admin (existing behavior)
       if (!director_email && !director_username) {
         return db
           .query(
@@ -78,7 +77,6 @@ exports.createNewProduction = (production, userId) => {
           .then(() => newProduction);
       }
 
-      // Director specified — look them up by email or username
       const lookupQuery = director_email
         ? `SELECT id FROM users WHERE email = $1`
         : `SELECT id FROM users WHERE username = $1`;
@@ -95,9 +93,6 @@ exports.createNewProduction = (production, userId) => {
           `INSERT INTO company_members (production_id, user_id, role, admin) VALUES ($1, $2, $3, $4)`,
           [newProduction.id, directorId, "Director", true],
         );
-
-        // Creator is also always an admin — but skip a duplicate insert
-        // if the creator IS the specified director
         const insertCreator =
           directorId === userId
             ? Promise.resolve()

@@ -7,7 +7,7 @@ exports.sendPasswordResetEmail = (email, token) => {
   const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
 
   return resend.emails.send({
-    from: "Stage Hand <noreply@yourdomain.com>",
+    from: "Stage Hand <noreply@myfringeplanner.co.uk>",
     to: [email],
     subject: "Reset your Stage Hand password",
     text: `You requested a password reset. Click the link below to set a new password. This link expires in 1 hour.\n\n${resetUrl}\n\nIf you didn't request this, you can ignore this email.`,
@@ -17,7 +17,7 @@ exports.sendPasswordResetEmail = (email, token) => {
 
 exports.sendExistingMemberAddedEmail = (email, productionTitle) => {
   return resend.emails.send({
-    from: `Stage Hand <noreply@stagehand.com>`,
+    from: `Stage Hand <noreply@myfringeplanner.co.uk>`,
     to: [email],
     subject: `You've been added to ${productionTitle}`,
     html: `
@@ -36,7 +36,7 @@ exports.sendNewMemberInviteEmail = (email, userId, productionTitle) => {
   const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
 
   return resend.emails.send({
-    from: `Stage Hand <noreply@stagehand.com>`,
+    from: `Stage Hand <noreply@myfringeplanner.co.uk>`,
     to: [email],
     subject: `You've been added to ${productionTitle}`,
     html: `
@@ -57,7 +57,7 @@ exports.sendRehearsalNotificationEmail = (
   if (emails.length === 0) return Promise.resolve();
 
   return resend.emails.send({
-    from: `Stage Hand <noreply@stagehand.com>`,
+    from: `Stage Hand <noreply@myfringeplanner.co.uk>`,
     to: emails,
     subject: `Rehearsal ${changeType} — ${productionTitle}`,
     html: `
