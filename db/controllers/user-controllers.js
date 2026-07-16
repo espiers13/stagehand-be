@@ -72,8 +72,6 @@ exports.getLoggedInUser = (req, res, next) => {
 exports.getUserProductions = (req, res, next) => {
   const userId = req.user.user_id;
 
-  console.log(userId);
-
   fetchUserProductions(userId)
     .then((productions) => {
       res.status(200).send(productions);

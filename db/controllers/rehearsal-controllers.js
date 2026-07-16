@@ -84,8 +84,6 @@ exports.deleteRehearsal = (req, res, next) => {
 
 exports.getUserSchedule = (req, res, next) => {
   const userId = req.user.user_id;
-  console.log("req.user:", req.user);
-  console.log("userId:", userId);
 
   fetchSchedule(userId)
     .then((data) => {
@@ -171,7 +169,6 @@ exports.patchAttendance = (req, res, next) => {
       res.status(200).send(data);
     })
     .catch((err) => {
-      console.log(err);
       next(err);
     });
 };
