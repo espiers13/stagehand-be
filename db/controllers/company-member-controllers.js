@@ -2,6 +2,7 @@ const {
   fetchMembersByProduction,
   createNewCompanyMember,
   removeCompanyMember,
+  updateCompanyMemberAdmin,
 } = require("../models/company-member-models.js");
 
 const { sendPasswordResetEmail } = require("../utils/mailer.js");
@@ -50,6 +51,7 @@ exports.patchCompanyMemberAdmin = (req, res, next) => {
   const { production_id, member_id } = req.params;
   const { admin } = req.body;
   const userId = req.user.user_id;
+  console.log(userId);
 
   if (typeof admin !== "boolean") {
     return next({ status: 400, msg: "Bad request" });

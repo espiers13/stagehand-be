@@ -1052,6 +1052,124 @@ describe("COMPANY MEMBER ROUTES", () => {
         });
     });
   });
+
+  // PATCH ADMIN ON COMPANY MEMBERS
+
+  describe.only("PATCH /api/productions/:production_id/members/:member_id/admin", () => {
+    test("status 200: successfully makes a company member an admin", () => {
+      const token = jwt.sign(
+        { user_id: 1, username: "sarah_director" },
+        process.env.JWT_SECRET,
+      );
+
+      return request(app)
+        .patch("/api/productions/1/members/2/admin")
+        .send({ admin: true })
+        .set("Authorization", `Bearer ${token}`)
+        .expect(200)
+        .then(({ body }) => {
+          expect(body).toMatchObject({
+            production_id: 1,
+            user_id: 2,
+            admin: true,
+          });
+        });
+    });
+
+    test("status 200: successfully removes admin status from a company member", () => {
+      const token = jwt.sign(
+        { user_id: 1, username: "sarah_director" },
+        process.env.JWT_SECRET,
+      );
+
+      return request(app)
+        .patch("/api/productions/1/members/4/admin")
+        .send({ admin: false })
+        .set("Authorization", `Bearer ${token}`)
+        .expect(200)
+        .then(({ body }) => {
+          expect(body).toMatchObject({
+            production_id: 1,
+            user_id: 4,
+            admin: false,
+          });
+        });
+    });
+
+    test("status 401: no token provided", () => {
+      return request(app)
+        .patch("/api/productions/1/members/2/admin")
+        .send({ admin: true })
+        .expect(401)
+        .then(({ body }) => {
+          expect(body.msg).toEqual("No token provided");
+        });
+    });
+
+    test("status 403: only an existing admin can update another member's admin status", () => {
+      const token = jwt.sign(
+        { user_id: 3, username: "cast_member_three" },
+        process.env.JWT_SECRET,
+      );
+
+      return request(app)
+        .patch("/api/productions/1/members/2/admin")
+        .send({ admin: true })
+        .set("Authorization", `Bearer ${token}`)
+        .expect(403)
+        .then(({ body }) => {
+          expect(body.msg).toEqual("Forbidden");
+        });
+    });
+
+    test("status 400: admin is not a boolean", () => {
+      const token = jwt.sign(
+        { user_id: 1, username: "sarah_director" },
+        process.env.JWT_SECRET,
+      );
+
+      return request(app)
+        .patch("/api/productions/1/members/2/admin")
+        .send({ admin: "yes" })
+        .set("Authorization", `Bearer ${token}`)
+        .expect(400)
+        .then(({ body }) => {
+          expect(body.msg).toEqual("Bad request");
+        });
+    });
+
+    test("status 400: admin is missing from request body", () => {
+      const token = jwt.sign(
+        { user_id: 1, username: "sarah_director" },
+        process.env.JWT_SECRET,
+      );
+
+      return request(app)
+        .patch("/api/productions/1/members/2/admin")
+        .send({})
+        .set("Authorization", `Bearer ${token}`)
+        .expect(400)
+        .then(({ body }) => {
+          expect(body.msg).toEqual("Bad request");
+        });
+    });
+
+    test("status 404: member_id does not exist on this production", () => {
+      const token = jwt.sign(
+        { user_id: 1, username: "sarah_director" },
+        process.env.JWT_SECRET,
+      );
+
+      return request(app)
+        .patch("/api/productions/1/members/999/admin")
+        .send({ admin: true })
+        .set("Authorization", `Bearer ${token}`)
+        .expect(404)
+        .then(({ body }) => {
+          expect(body.msg).toEqual("Member not found");
+        });
+    });
+  });
 });
 
 // REHEARSAL ROUTES
